@@ -11,3 +11,5 @@ dependencies {
     implementation 'com.lifeinide.jsonql:jsonql-hibernate-search-elastic:VERSION'
 }
 ```
+
+[//]: # (TODOLF example usage)
