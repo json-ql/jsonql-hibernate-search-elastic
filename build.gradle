@@ -1,0 +1,104 @@
+plugins {
+    id 'java'
+    id 'maven'
+    id 'maven-publish'
+}
+
+group 'com.lifeinide.jsonql'
+description 'Hibernate Search with ElasticSearch backend filter query builder for JSON-QL.'
+
+/*
+  VERSION UPGRADE HOWTO:
+  1. Increment version here
+  2. Tag with the same version tag and push
+  3. Do `gradle publish`
+ */
+version '1.0.0'
+
+sourceCompatibility = 1.8
+
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allJava
+    archiveClassifier = 'sources'
+}
+
+task javadocJar(type: Jar) {
+    from javadoc
+    archiveClassifier = 'javadoc'
+}
+
+def token = project.findProperty("token")
+if (!token) {
+    try {
+        token = new File(System.getProperty("user.home"), ".github-token").text
+        logger.info("Using token from ~/.github-token.")
+    } catch (e) {
+        logger.warn("Please put personal github token into ~/.github-token file or pass it with -Ptoken=??? parameter.")
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifact sourcesJar
+            artifact javadocJar
+        }
+    }
+
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/json-ql/jsonql-core")
+            credentials {
+                username = project.findProperty("user") ?: "l0co"
+                password = token
+            }
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "GitHubPackages"
+        url = uri("https://maven.pkg.github.com/json-ql/jsonql-core")
+        credentials {
+            username = project.findProperty("user") ?: "l0co"
+            password = token
+        }
+    }
+}
+
+dependencies {
+    implementation group: 'com.lifeinide.jsonql', name: 'jsonql-core', version: property('vJsonqlCore')
+    implementation group: 'org.slf4j', name: 'slf4j-api', version: property('vSlf4j')
+
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: property('vJunit')
+    testRuntimeOnly group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: property('vJunit')
+    testRuntimeOnly group: 'ch.qos.logback', name: 'logback-classic', version: property('vLogback')
+}
+
+def installer = install.repositories.mavenInstaller
+
+// alter maven pom
+installer.pom.whenConfigured {pom ->
+    pom.project {
+        name project.name
+        description description
+        url 'https://github.com/json-ql'
+        licenses {
+            license {
+                name 'The Apache Software License, Version 2.0'
+                url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                distribution 'repo'
+            }
+        }
+        // remove test dependencies
+        for (Iterator itr = pom.dependencies.iterator(); itr.hasNext(); )
+            if (itr.next().scope == 'test')
+                itr.remove()
+    }
+}
+
+
