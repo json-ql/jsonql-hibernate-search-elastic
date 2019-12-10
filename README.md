@@ -13,3 +13,8 @@ dependencies {
 ```
 
 [//]: # (TODOLF example usage)
+
+## Running tests
+
+Before running test please start ElasticSearch docker container from [here](docker).
+
