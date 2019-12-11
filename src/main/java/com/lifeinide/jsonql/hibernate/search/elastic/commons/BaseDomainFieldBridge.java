@@ -4,6 +4,7 @@ import org.apache.lucene.document.Document;
 import org.hibernate.search.bridge.FieldBridge;
 import org.hibernate.search.bridge.LuceneOptions;
 import org.hibernate.search.bridge.StringBridge;
+import org.hibernate.search.bridge.spi.IgnoreAnalyzerBridge;
 
 /**
  * A {@link FieldBridge} to reflect entity objects in lucene index. To be implemented by the application.
@@ -13,7 +14,7 @@ import org.hibernate.search.bridge.StringBridge;
  * @author Lukasz Frankowski
  */
 @SuppressWarnings("unchecked")
-public abstract class BaseDomainFieldBridge<E> implements FieldBridge, StringBridge {
+public abstract class BaseDomainFieldBridge<E> implements FieldBridge, StringBridge, IgnoreAnalyzerBridge {
 
 	public static final String NULL_ID = "[NULL_ID]";
 

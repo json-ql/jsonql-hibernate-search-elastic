@@ -2,7 +2,6 @@ package com.lifeinide.jsonql.hibernate.search.elastic.test;
 
 import com.lifeinide.jsonql.core.test.IJsonQLBaseTestEntity;
 import com.lifeinide.jsonql.hibernate.search.elastic.commons.HibernateSearch;
-import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.hibernate.search.annotations.Analyzer;
 import org.hibernate.search.annotations.Field;
 import org.hibernate.search.annotations.Indexed;
@@ -14,13 +13,13 @@ import javax.persistence.Id;
  * @author Lukasz Frankowski
  */
 @Entity
-@Indexed(index = "HibernateSearchAssociatedEntity")
+@Indexed(index = "hibernatesearchassociatedentity")
 public class HibernateSearchAssociatedEntity implements IJsonQLBaseTestEntity<Long> {
 
 	@Id Long id;
 
 	@Field(name = HibernateSearch.FIELD_TEXT)
-	@Analyzer(impl = EnglishAnalyzer.class)
+	@Analyzer(definition = "standard")
 	protected String q = HibernateSearchQueryBuilderTest.SEARCHABLE_STRING;
 
 	public HibernateSearchAssociatedEntity() {

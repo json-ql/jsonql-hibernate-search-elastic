@@ -2,8 +2,8 @@ package com.lifeinide.jsonql.hibernate.search.elastic.test;
 
 import com.lifeinide.jsonql.core.test.IJsonQLTestEntity;
 import com.lifeinide.jsonql.core.test.JsonQLTestEntityEnum;
+import com.lifeinide.jsonql.hibernate.search.elastic.BigDecimalBridge;
 import com.lifeinide.jsonql.hibernate.search.elastic.commons.HibernateSearch;
-import com.lifeinide.jsonql.hibernate.search.elastic.commons.RangeNumberBridge;
 import org.hibernate.search.annotations.*;
 
 import javax.persistence.*;
@@ -11,10 +11,46 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
+ * A mapping for this entity in ElasticSearch:
+ *
+ * <pre>{@code
+ * {
+ *     "dynamic": "strict",
+ *     "properties": {
+ *         "dateVal": {
+ *             "type": "date",
+ *             "format": "strict_date||yyyyyyyyy-MM-dd"
+ *         },
+ *         "decimalVal": {
+ *             "type": "double"
+ *         },
+ *         "entityVal": {
+ *             "type": "keyword"
+ *         },
+ *         "enumVal": {
+ *             "type": "keyword"
+ *         },
+ *         "id": {
+ *             "type": "keyword",
+ *             "store": true
+ *         },
+ *         "longVal": {
+ *             "type": "long"
+ *         },
+ *         "text": {
+ *             "type": "text",
+ *             "analyzer": "standard"
+ *         },
+ *         "textid": {
+ *             "type": "keyword"
+ *         }
+ *     }
+ * }}</pre>
+ *
  * @author Lukasz Frankowski
  */
 @Entity
-@Indexed(index = "HibernateSearchEntity")
+@Indexed(index = "hibernatesearchentity")
 public class HibernateSearchEntity implements IJsonQLTestEntity<Long, HibernateSearchAssociatedEntity> {
 
 	@Id private Long id;
@@ -23,15 +59,14 @@ public class HibernateSearchEntity implements IJsonQLTestEntity<Long, HibernateS
 	@Analyzer(definition = "standard")
 	protected String q = HibernateSearchQueryBuilderTest.SEARCHABLE_STRING;
 
-	@Field(analyze = Analyze.NO, norms = Norms.NO)
+	@Field(name = HibernateSearch.FIELD_ID, analyze = Analyze.NO, norms = Norms.NO)
 	protected String stringVal;
 
 	@Field(analyze = Analyze.NO, norms = Norms.NO)
-	@FieldBridge(impl = RangeNumberBridge.class)
 	protected Long longVal;
 
 	@Field(analyze = Analyze.NO, norms = Norms.NO)
-	@FieldBridge(impl = RangeNumberBridge.class)
+	@FieldBridge(impl = BigDecimalBridge.class)
 	protected BigDecimal decimalVal;
 
 	@Field(analyze = Analyze.NO, norms = Norms.NO)
