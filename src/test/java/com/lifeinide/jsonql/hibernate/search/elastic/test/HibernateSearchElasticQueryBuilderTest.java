@@ -3,7 +3,7 @@ package com.lifeinide.jsonql.hibernate.search.elastic.test;
 import com.lifeinide.jsonql.core.dto.Page;
 import com.lifeinide.jsonql.core.test.JsonQLBaseQueryBuilderTest;
 import com.lifeinide.jsonql.core.test.JsonQLQueryBuilderTestFeature;
-import com.lifeinide.jsonql.hibernate.search.elastic.HibernateSearchFilterQueryBuilder;
+import com.lifeinide.jsonql.hibernate.search.elastic.HibernateSearchElasticFilterQueryBuilder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -17,12 +17,12 @@ import java.util.function.Consumer;
 /**
  * @author Lukasz Frankowski
  */
-public class HibernateSearchQueryBuilderTest extends JsonQLBaseQueryBuilderTest<
+public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuilderTest<
 	EntityManager,
 	Long,
-	HibernateSearchAssociatedEntity,
-	HibernateSearchEntity,
-	HibernateSearchFilterQueryBuilder<HibernateSearchEntity, Page<HibernateSearchEntity>>
+	HibernateSearchElasticAssociatedEntity,
+	HibernateSearchElasticEntity,
+	HibernateSearchElasticFilterQueryBuilder<HibernateSearchElasticEntity, Page<HibernateSearchElasticEntity>>
 > {
 
 	public static final String PERSISTENCE_UNIT_NAME = "test-jpa";
@@ -58,17 +58,17 @@ public class HibernateSearchQueryBuilderTest extends JsonQLBaseQueryBuilderTest<
 	}
 
 	@Override
-	protected HibernateSearchEntity buildEntity(Long previousId) {
-		return new HibernateSearchEntity(previousId==null ? 1L : previousId+1);
+	protected HibernateSearchElasticEntity buildEntity(Long previousId) {
+		return new HibernateSearchElasticEntity(previousId==null ? 1L : previousId+1);
 	}
 
 	@Override
-	protected HibernateSearchAssociatedEntity buildAssociatedEntity() {
-		return new HibernateSearchAssociatedEntity(1L);
+	protected HibernateSearchElasticAssociatedEntity buildAssociatedEntity() {
+		return new HibernateSearchElasticAssociatedEntity(1L);
 	}
 
 	@Override
-	protected void doTest(BiConsumer<EntityManager, HibernateSearchFilterQueryBuilder<HibernateSearchEntity, Page<HibernateSearchEntity>>> c) {
+	protected void doTest(BiConsumer<EntityManager, HibernateSearchElasticFilterQueryBuilder<HibernateSearchElasticEntity, Page<HibernateSearchElasticEntity>>> c) {
 		// TODOLF implement HibernateSearchQueryBuilderTest.doTest
 //		doWithEntityManager(em -> c.accept(em,
 //			new HibernateSearchFilterQueryBuilder<>(em, HibernateSearchEntity.class, SEARCHABLE_STRING)));

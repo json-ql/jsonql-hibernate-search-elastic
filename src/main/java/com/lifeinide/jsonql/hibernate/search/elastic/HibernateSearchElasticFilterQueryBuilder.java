@@ -14,8 +14,8 @@ import org.hibernate.search.jpa.FullTextQuery;
  *
  * @author Lukasz Frankowski
  */
-public class HibernateSearchFilterQueryBuilder<E, P extends Page<E>>
-	extends BaseFilterQueryBuilder<E, P, FullTextQuery, BaseQueryBuilderContext, HibernateSearchFilterQueryBuilder<E, P>> {
+public class HibernateSearchElasticFilterQueryBuilder<E, P extends Page<E>>
+	extends BaseFilterQueryBuilder<E, P, FullTextQuery, BaseQueryBuilderContext, HibernateSearchElasticFilterQueryBuilder<E, P>> {
 
 	@Override
 	public BaseQueryBuilderContext context() {
@@ -24,31 +24,31 @@ public class HibernateSearchFilterQueryBuilder<E, P extends Page<E>>
 	}
 
 	@Override
-	public HibernateSearchFilterQueryBuilder<E, P> add(String field, DateRangeQueryFilter filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, DateRangeQueryFilter filter) {
 		// TODOLF impl HibernateSearchFilterQueryBuilder.add
 		return null;
 	}
 
 	@Override
-	public HibernateSearchFilterQueryBuilder<E, P> add(String field, EntityQueryFilter<?> filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, EntityQueryFilter<?> filter) {
 		// TODOLF impl HibernateSearchFilterQueryBuilder.add
 		return null;
 	}
 
 	@Override
-	public HibernateSearchFilterQueryBuilder<E, P> add(String field, ListQueryFilter<? extends QueryFilter> filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, ListQueryFilter<? extends QueryFilter> filter) {
 		// TODOLF impl HibernateSearchFilterQueryBuilder.add
 		return null;
 	}
 
 	@Override
-	public HibernateSearchFilterQueryBuilder<E, P> add(String field, SingleValueQueryFilter<?> filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, SingleValueQueryFilter<?> filter) {
 		// TODOLF impl HibernateSearchFilterQueryBuilder.add
 		return null;
 	}
 
 	@Override
-	public HibernateSearchFilterQueryBuilder<E, P> add(String field, ValueRangeQueryFilter<? extends Number> filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, ValueRangeQueryFilter<? extends Number> filter) {
 		// TODOLF impl HibernateSearchFilterQueryBuilder.add
 		return null;
 	}

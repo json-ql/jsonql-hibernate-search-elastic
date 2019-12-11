@@ -13,19 +13,19 @@ import javax.persistence.Id;
  * @author Lukasz Frankowski
  */
 @Entity
-@Indexed(index = "hibernatesearchassociatedentity")
-public class HibernateSearchAssociatedEntity implements IJsonQLBaseTestEntity<Long> {
+@Indexed(index = "hibernatesearchelasticassociatedentity")
+public class HibernateSearchElasticAssociatedEntity implements IJsonQLBaseTestEntity<Long> {
 
 	@Id Long id;
 
 	@Field(name = HibernateSearch.FIELD_TEXT)
 	@Analyzer(definition = "standard")
-	protected String q = HibernateSearchQueryBuilderTest.SEARCHABLE_STRING;
+	protected String q = HibernateSearchElasticQueryBuilderTest.SEARCHABLE_STRING;
 
-	public HibernateSearchAssociatedEntity() {
+	public HibernateSearchElasticAssociatedEntity() {
 	}
 
-	public HibernateSearchAssociatedEntity(Long id) {
+	public HibernateSearchElasticAssociatedEntity(Long id) {
 		this.id = id;
 	}
 

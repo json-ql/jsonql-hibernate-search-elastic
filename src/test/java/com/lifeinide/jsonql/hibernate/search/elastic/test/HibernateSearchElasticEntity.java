@@ -53,14 +53,14 @@ import java.time.LocalDate;
  * @author Lukasz Frankowski
  */
 @Entity
-@Indexed(index = "hibernatesearchentity")
-public class HibernateSearchEntity implements IJsonQLTestEntity<Long, HibernateSearchAssociatedEntity> {
+@Indexed(index = "hibernatesearchelasticentity")
+public class HibernateSearchElasticEntity implements IJsonQLTestEntity<Long, HibernateSearchElasticAssociatedEntity> {
 
 	@Id private Long id;
 
 	@Field(name = HibernateSearch.FIELD_TEXT)
 	@Analyzer(definition = "standard")
-	protected String q = HibernateSearchQueryBuilderTest.SEARCHABLE_STRING;
+	protected String q = HibernateSearchElasticQueryBuilderTest.SEARCHABLE_STRING;
 
 	@Field(name = HibernateSearch.FIELD_ID, analyze = Analyze.NO, norms = Norms.NO)
 	protected String stringVal;
@@ -85,12 +85,12 @@ public class HibernateSearchEntity implements IJsonQLTestEntity<Long, HibernateS
 	@ManyToOne
 	@Field(analyze = Analyze.NO, norms = Norms.NO)
 	@FieldBridge(impl = DomainFieldBridge.class)
-	protected HibernateSearchAssociatedEntity entityVal;
+	protected HibernateSearchElasticAssociatedEntity entityVal;
 
-	public HibernateSearchEntity() {
+	public HibernateSearchElasticEntity() {
 	}
 
-	public HibernateSearchEntity(Long id) {
+	public HibernateSearchElasticEntity(Long id) {
 		this.id = id;
 	}
 
@@ -173,12 +173,12 @@ public class HibernateSearchEntity implements IJsonQLTestEntity<Long, HibernateS
 	}
 
 	@Override
-	public HibernateSearchAssociatedEntity getEntityVal() {
+	public HibernateSearchElasticAssociatedEntity getEntityVal() {
 		return entityVal;
 	}
 
 	@Override
-	public void setEntityVal(HibernateSearchAssociatedEntity entityVal) {
+	public void setEntityVal(HibernateSearchElasticAssociatedEntity entityVal) {
 		this.entityVal = entityVal;
 	}
 	
