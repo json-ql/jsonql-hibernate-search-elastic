@@ -74,8 +74,8 @@ repositories {
 }
 
 dependencies {
-    implementation group: 'com.lifeinide.jsonql', name: 'jsonql-hibernate-search', version: property('vJsonqlHibernateSearch')
-    implementation group: 'org.hibernate', name: 'hibernate-search-elasticsearch', version: property('vHibernateSearch')
+    compile group: 'com.lifeinide.jsonql', name: 'jsonql-hibernate-search', version: property('vJsonqlHibernateSearch')
+    compile group: 'org.hibernate', name: 'hibernate-search-elasticsearch', version: property('vHibernateSearch')
 
     testCompile group: 'com.h2database', name: 'h2', version: property('vH2')
 
