@@ -1,7 +1,7 @@
 package com.lifeinide.jsonql.hibernate.search.elastic.test;
 
 import com.lifeinide.jsonql.core.test.IJsonQLBaseTestEntity;
-import com.lifeinide.jsonql.hibernate.search.elastic.commons.BaseDomainFieldBridge;
+import com.lifeinide.jsonql.hibernate.search.bridge.BaseDomainFieldBridge;
 
 /**
  * @author Lukasz Frankowski

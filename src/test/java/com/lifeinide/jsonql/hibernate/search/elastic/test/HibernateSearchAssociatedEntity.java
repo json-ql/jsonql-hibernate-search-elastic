@@ -1,7 +1,7 @@
 package com.lifeinide.jsonql.hibernate.search.elastic.test;
 
 import com.lifeinide.jsonql.core.test.IJsonQLBaseTestEntity;
-import com.lifeinide.jsonql.hibernate.search.elastic.commons.HibernateSearch;
+import com.lifeinide.jsonql.hibernate.search.HibernateSearch;
 import org.hibernate.search.annotations.Analyzer;
 import org.hibernate.search.annotations.Field;
 import org.hibernate.search.annotations.Indexed;

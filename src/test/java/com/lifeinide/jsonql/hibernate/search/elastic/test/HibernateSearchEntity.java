@@ -2,8 +2,8 @@ package com.lifeinide.jsonql.hibernate.search.elastic.test;
 
 import com.lifeinide.jsonql.core.test.IJsonQLTestEntity;
 import com.lifeinide.jsonql.core.test.JsonQLTestEntityEnum;
-import com.lifeinide.jsonql.hibernate.search.elastic.BigDecimalBridge;
-import com.lifeinide.jsonql.hibernate.search.elastic.commons.HibernateSearch;
+import com.lifeinide.jsonql.hibernate.search.HibernateSearch;
+import com.lifeinide.jsonql.hibernate.search.bridge.BigDecimalRangeBridge;
 import org.hibernate.search.annotations.*;
 
 import javax.persistence.*;
@@ -25,7 +25,7 @@ import java.time.LocalDate;
  *             "format": "strict_date||yyyyyyyyy-MM-dd"
  *         },
  *         "decimalVal": {
- *             "type": "double"
+ *             "type": "keyword"
  *         },
  *         "entityVal": {
  *             "type": "keyword"
@@ -72,7 +72,7 @@ public class HibernateSearchEntity implements IJsonQLTestEntity<Long, HibernateS
 	protected Long longVal;
 
 	@Field(analyze = Analyze.NO, norms = Norms.NO)
-	@FieldBridge(impl = BigDecimalBridge.class)
+	@FieldBridge(impl = BigDecimalRangeBridge.class) // TODOLF test with field type overwritten with FieldType.LONG + MetadataProvidingFieldBridge
 	protected BigDecimal decimalVal;
 
 	@Field(analyze = Analyze.NO, norms = Norms.NO)
