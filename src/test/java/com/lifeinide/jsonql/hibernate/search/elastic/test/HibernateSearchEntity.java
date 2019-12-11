@@ -17,6 +17,9 @@ import java.time.LocalDate;
  * {
  *     "dynamic": "strict",
  *     "properties": {
+ *         "booleanVal": {
+ *             "type": "boolean"
+ *         },
  *         "dateVal": {
  *             "type": "date",
  *             "format": "strict_date||yyyyyyyyy-MM-dd"
@@ -61,6 +64,9 @@ public class HibernateSearchEntity implements IJsonQLTestEntity<Long, HibernateS
 
 	@Field(name = HibernateSearch.FIELD_ID, analyze = Analyze.NO, norms = Norms.NO)
 	protected String stringVal;
+
+	@Field(analyze = Analyze.NO, norms = Norms.NO)
+	protected boolean booleanVal;
 
 	@Field(analyze = Analyze.NO, norms = Norms.NO)
 	protected Long longVal;
@@ -114,6 +120,16 @@ public class HibernateSearchEntity implements IJsonQLTestEntity<Long, HibernateS
 	@Override
 	public void setStringVal(String stringVal) {
 		this.stringVal = stringVal;
+	}
+
+	@Override
+	public boolean isBooleanVal() {
+		return booleanVal;
+	}
+
+	@Override
+	public void setBooleanVal(boolean booleanVal) {
+		this.booleanVal = booleanVal;
 	}
 
 	@Override
