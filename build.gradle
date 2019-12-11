@@ -40,6 +40,9 @@ if (!token) {
 publishing {
     publications {
         mavenJava(MavenPublication) {
+            pom.withXml { // https://discuss.gradle.org/t/maven-publish-plugin-generated-pom-making-dependency-scope-runtime/7494/10
+                asNode().dependencies.'*'.each { it.scope*.value = 'compile'}
+            }
             from components.java
             artifact sourcesJar
             artifact javadocJar
@@ -71,16 +74,10 @@ repositories {
 }
 
 dependencies {
-    implementation group: 'com.lifeinide.jsonql', name: 'jsonql-core', version: property('vJsonqlCore')
-    implementation group: 'org.slf4j', name: 'slf4j-api', version: property('vSlf4j')
-    implementation group: 'javax.persistence', name:'javax.persistence-api', version: property('vJpa')
-    implementation group: 'org.hibernate', name: 'hibernate-core', version: property('vHibernate')
-    implementation group: 'org.hibernate', name: 'hibernate-search-engine', version: property('vHibernateSearch')
-    implementation group: 'org.hibernate', name: 'hibernate-search-orm', version: property('vHibernateSearch')
+    implementation group: 'com.lifeinide.jsonql', name: 'jsonql-hibernate-search', version: property('vJsonqlHibernateSearch')
     implementation group: 'org.hibernate', name: 'hibernate-search-elasticsearch', version: property('vHibernateSearch')
 
     testCompile group: 'com.h2database', name: 'h2', version: property('vH2')
-    testCompile group: 'commons-io', name: 'commons-io', version: property('vCommonsIo')
 
     testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: property('vJunit')
     testRuntimeOnly group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: property('vJunit')
@@ -88,25 +85,3 @@ dependencies {
 }
 
 def installer = install.repositories.mavenInstaller
-
-// alter maven pom
-installer.pom.whenConfigured {pom ->
-    pom.project {
-        name project.name
-        description description
-        url 'https://github.com/json-ql'
-        licenses {
-            license {
-                name 'The Apache Software License, Version 2.0'
-                url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                distribution 'repo'
-            }
-        }
-        // remove test dependencies
-        for (Iterator itr = pom.dependencies.iterator(); itr.hasNext(); )
-            if (itr.next().scope == 'test')
-                itr.remove()
-    }
-}
-
-
