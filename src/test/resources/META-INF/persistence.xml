@@ -1,0 +1,20 @@
+<persistence xmlns="http://java.sun.com/xml/ns/persistence"
+			 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			 xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd"
+			 version="2.0">
+	<persistence-unit name="test-jpa">
+		<class>com.lifeinide.jsonql.hibernate.search.elastic.test.HibernateSearchEntity</class>
+		<class>com.lifeinide.jsonql.hibernate.search.elastic.test.HibernateSearchAssociatedEntity</class>
+		<exclude-unlisted-classes>true</exclude-unlisted-classes>
+		<properties>
+			<property name="hibernate.dialect" value="org.hibernate.dialect.H2Dialect"/>
+			<property name="hibernate.hbm2ddl.auto" value="update"/>
+			<property name="javax.persistence.jdbc.driver" value="org.h2.Driver"/>
+			<property name="javax.persistence.jdbc.url" value="jdbc:h2:mem:test;DB_CLOSE_DELAY=-1"/>
+			<property name="hibernate.search.default.indexmanager" value="elasticsearch"/>
+			<property name="hibernate.search.default.elasticsearch.host" value="http://127.0.0.1:9200"/>
+			<property name="hibernate.search.default.elasticsearch.index_schema_management_strategy" value="drop-and-create"/>
+			<property name="hibernate.search.default.elasticsearch.required_index_status" value="yellow"/>
+		</properties>
+	</persistence-unit>
+</persistence>
