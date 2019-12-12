@@ -26,7 +26,7 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 > {
 
 	public static final String PERSISTENCE_UNIT_NAME = "test-jpa";
-	public static final String SEARCHABLE_STRING = "in the middle of";
+	public static final String SEARCHABLE_STRING = "in the middle of nowhere";
 	public static final String SEARCHABLE_STRING_PART = "middle";
 
 	protected EntityManagerFactory entityManagerFactory;
