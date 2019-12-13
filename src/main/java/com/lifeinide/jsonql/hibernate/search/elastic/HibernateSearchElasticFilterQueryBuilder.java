@@ -5,11 +5,8 @@ import com.lifeinide.jsonql.core.filters.*;
 import com.lifeinide.jsonql.core.intr.FilterQueryBuilder;
 import com.lifeinide.jsonql.core.intr.QueryFilter;
 import com.lifeinide.jsonql.elasticql.EQLBuilder;
-import com.lifeinide.jsonql.elasticql.node.component.EQLComponent;
-import com.lifeinide.jsonql.elasticql.node.component.EQLMatchComponent;
-import com.lifeinide.jsonql.elasticql.node.component.EQLMatchPhrasePrefixComponent;
-import com.lifeinide.jsonql.elasticql.node.query.EQLMatchPhrasePrefixQuery;
-import com.lifeinide.jsonql.elasticql.node.query.EQLMatchQuery;
+import com.lifeinide.jsonql.elasticql.node.component.*;
+import com.lifeinide.jsonql.elasticql.node.query.*;
 import com.lifeinide.jsonql.hibernate.search.BaseHibernateSearchFilterQueryBuilder;
 import com.lifeinide.jsonql.hibernate.search.FieldSearchStrategy;
 import com.lifeinide.jsonql.hibernate.search.HibernateSearch;
@@ -110,31 +107,84 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 	@Override
 	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, DateRangeQueryFilter filter) {
 		// TODOLF impl HibernateSearchFilterQueryBuilder.add
-		return null;
+		return this;
 	}
 
 	@Override
 	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, EntityQueryFilter<?> filter) {
-		// TODOLF impl HibernateSearchFilterQueryBuilder.add
-		return null;
+		return add(field, (SingleValueQueryFilter<?>) filter);
 	}
 
 	@Override
 	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, ListQueryFilter<? extends QueryFilter> filter) {
-		// TODOLF impl HibernateSearchFilterQueryBuilder.add
-		return null;
+		// TODOLF implement HibernateSearchElasticFilterQueryBuilder.add
+
+//		if (filter!=null) {
+//			HibernateSearchElasticFilterQueryBuilder<E, P> internalBuilder =
+//				new HibernateSearchElasticFilterQueryBuilder<>(
+//					context.getHibernateSearch().entityManager(), context.getEntityClass(), context.getQuery());
+//
+//			if (QueryConjunction.or.equals(filter.getConjunction()))
+//				internalBuilder.withOrConjunction();
+//
+//			filter.getFilters().forEach(f -> f.accept(internalBuilder, field));
+//			internalBuilder.buildPredicate().ifPresent(predicate -> context.getPredicates().add(predicate));
+//		}
+
+		return this;
 	}
 
 	@Override
 	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, SingleValueQueryFilter<?> filter) {
-		// TODOLF impl HibernateSearchFilterQueryBuilder.add
-		return null;
+		if (filter!=null)
+
+			switch (filter.getCondition()) {
+
+				case eq:
+					context.getEqlFilterBool().withMust(EQLTermComponent.of(field, EQLTermQuery.of(filter.getValue())));
+					break;
+
+				case ne:
+					context.getEqlFilterBool().withMustNot(EQLTermComponent.of(field, EQLTermQuery.of(filter.getValue())));
+					break;
+
+				case gt:
+					context.getEqlFilterBool().withMust(EQLRangeComponent.of(field, EQLRangeQuery.ofGt(filter.getValue())));
+					break;
+
+				case ge:
+					context.getEqlFilterBool().withMust(EQLRangeComponent.of(field, EQLRangeQuery.ofGte(filter.getValue())));
+					break;
+
+				case lt:
+					context.getEqlFilterBool().withMust(EQLRangeComponent.of(field, EQLRangeQuery.ofLt(filter.getValue())));
+					break;
+
+				case le:
+					context.getEqlFilterBool().withMust(EQLRangeComponent.of(field, EQLRangeQuery.ofLte(filter.getValue())));
+					break;
+
+				case isNull:
+					context.getEqlFilterBool().withMustNot(EQLExistsComponent.of(EQLExistsQuery.of(field)));
+					break;
+
+				case notNull:
+					context.getEqlFilterBool().withMust(EQLExistsComponent.of(EQLExistsQuery.of(field)));
+					break;
+
+				default:
+					throw new IllegalArgumentException(
+						String.format("Condition: %s not supported for HibernateSearchFilterQueryBuilder", filter.getCondition()));
+
+			}
+
+		return this;
 	}
 
 	@Override
 	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, ValueRangeQueryFilter<? extends Number> filter) {
 		// TODOLF impl HibernateSearchFilterQueryBuilder.add
-		return null;
+		return this;
 	}
 
 	@Override

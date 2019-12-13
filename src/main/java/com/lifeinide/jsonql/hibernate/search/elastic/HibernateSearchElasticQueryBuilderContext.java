@@ -17,6 +17,9 @@ public class HibernateSearchElasticQueryBuilderContext<E> extends BaseHibernateS
 	/** Main query bool. We always use query with {@code {query: {bool: {...}}}}. **/
 	protected EQLBool eqlBool;
 
+	/** Filter query bool. We always use query with {@code {filter: [{bool: {...}}]}}. **/
+	protected EQLBool eqlFilterBool;
+
 	public HibernateSearchElasticQueryBuilderContext(String query, Class<E> entityClass, HibernateSearch hibernateSearch) {
 		super(query, entityClass, hibernateSearch);
 
@@ -32,4 +35,12 @@ public class HibernateSearchElasticQueryBuilderContext<E> extends BaseHibernateS
 		return eqlBool;
 	}
 
+	public EQLBool getEqlFilterBool() {
+		if (eqlFilterBool==null) {
+			eqlFilterBool = EQLBool.of();
+			eqlBool.withFilter(EQLBoolComponent.of(eqlFilterBool));
+		}
+
+		return eqlFilterBool;
+	}
 }
