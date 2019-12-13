@@ -61,6 +61,7 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 	@Test
 	public void testLocalAndGlobalSearch() {
 		// TODOLF implement HibernateSearchQueryBuilderTest.testLocalAndGlobalSearch
+		throw new IllegalStateException("Not implemented");
 //		doWithEntityManager(em -> {
 //			DefaultHibernateSearchFilterQueryBuilder<?> qb =
 //				new DefaultHibernateSearchFilterQueryBuilder<>(em, HibernateSearchEntity.class, SEARCHABLE_STRING_PART);
