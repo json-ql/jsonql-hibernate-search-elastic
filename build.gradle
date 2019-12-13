@@ -75,11 +75,11 @@ repositories {
 
 dependencies {
     compile group: 'com.lifeinide.jsonql', name: 'jsonql-hibernate-search', version: property('vJsonqlHibernateSearch')
+    compile group: 'com.lifeinide.jsonql', name: 'jsonql-elastic-ql', version: property('vJsonqlElasticql')
     compile group: 'org.hibernate', name: 'hibernate-search-elasticsearch', version: property('vHibernateSearch')
 
+    testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: property('vJunit')
     testCompile group: 'com.h2database', name: 'h2', version: property('vH2')
-
-    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: property('vJunit')
     testRuntimeOnly group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: property('vJunit')
     testRuntimeOnly group: 'ch.qos.logback', name: 'logback-classic', version: property('vLogback')
 }

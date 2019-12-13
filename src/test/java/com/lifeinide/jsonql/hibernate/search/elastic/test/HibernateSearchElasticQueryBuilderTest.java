@@ -2,7 +2,6 @@ package com.lifeinide.jsonql.hibernate.search.elastic.test;
 
 import com.lifeinide.jsonql.core.dto.Page;
 import com.lifeinide.jsonql.core.test.JsonQLBaseQueryBuilderTest;
-import com.lifeinide.jsonql.core.test.JsonQLQueryBuilderTestFeature;
 import com.lifeinide.jsonql.hibernate.search.elastic.HibernateSearchElasticFilterQueryBuilder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -44,20 +43,6 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 	}
 
 	@Override
-	protected boolean supports(JsonQLQueryBuilderTestFeature feature) {
-		// TODOLF ???
-		switch (feature) {
-			case STRICT_INEQUALITIES:
-			case STRICT_DECIMALS:
-			case NULLS:
-			case SORTING:
-				return false;
-		}
-
-		return super.supports(feature);
-	}
-
-	@Override
 	protected HibernateSearchElasticEntity buildEntity(Long previousId) {
 		return new HibernateSearchElasticEntity(previousId==null ? 1L : previousId+1);
 	}
@@ -69,9 +54,8 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 
 	@Override
 	protected void doTest(BiConsumer<EntityManager, HibernateSearchElasticFilterQueryBuilder<HibernateSearchElasticEntity, Page<HibernateSearchElasticEntity>>> c) {
-		// TODOLF implement HibernateSearchQueryBuilderTest.doTest
-//		doWithEntityManager(em -> c.accept(em,
-//			new HibernateSearchFilterQueryBuilder<>(em, HibernateSearchEntity.class, SEARCHABLE_STRING)));
+		doWithEntityManager(em -> c.accept(em,
+			new HibernateSearchElasticFilterQueryBuilder<>(em, HibernateSearchElasticEntity.class, SEARCHABLE_STRING)));
 	}
 
 	@Test
