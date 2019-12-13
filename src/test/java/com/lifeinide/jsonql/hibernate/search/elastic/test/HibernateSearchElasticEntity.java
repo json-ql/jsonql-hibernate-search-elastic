@@ -63,6 +63,7 @@ public class HibernateSearchElasticEntity implements IJsonQLTestEntity<Long, Hib
 	protected String q = HibernateSearchElasticQueryBuilderTest.SEARCHABLE_STRING;
 
 	@Field(name = HibernateSearch.FIELD_ID)
+	@Field(name = "stringVal")
 	@Analyzer(definition = "keyword")
 	protected String stringVal;
 
