@@ -24,6 +24,8 @@ import org.hibernate.search.query.dsl.sort.SortNativeContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
@@ -133,28 +135,29 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 	/**
 	 * Builds a query builder for concrete entity class with default search fields.
 	 */
-	public HibernateSearchElasticFilterQueryBuilder(EntityManager entityManager, Class<E> entityClass, String q) {
+	public HibernateSearchElasticFilterQueryBuilder(@Nonnull EntityManager entityManager, @Nonnull Class<E> entityClass, @Nullable String q) {
 		this(entityManager, entityClass, q, defaultSearchFields());
 	}
 
 	/**
 	 * Builds a query builder for concrete entity class with customizable search fields.
 	 */
-	public HibernateSearchElasticFilterQueryBuilder(EntityManager entityManager, Class<E> entityClass, String q,
-											 		Map<String, FieldSearchStrategy> fields) {
+	public HibernateSearchElasticFilterQueryBuilder(@Nonnull EntityManager entityManager, @Nonnull Class<E> entityClass,
+													@Nullable String q, @Nullable Map<String, FieldSearchStrategy> fields) {
 		HibernateSearch hibernateSearch = new HibernateSearch(entityManager);
 		context = new HibernateSearchElasticQueryBuilderContext<>(q, entityClass, hibernateSearch);
 
 		boolean fieldFound = false;
-		
-		for (Map.Entry<String, FieldSearchStrategy> entry: fields.entrySet()) {
-			try {
-				context.getEqlBool().withShould(createFieldQuery(entry.getValue(), entry.getKey(), q));
-				fieldFound = true;
-			} catch (Exception e) {
-				// silently, this means that some of our full text fields don't exists in the entity
+
+		if (fields!=null && q!=null)
+			for (Map.Entry<String, FieldSearchStrategy> entry: fields.entrySet()) {
+				try {
+					context.getEqlBool().withShould(createFieldQuery(entry.getValue(), entry.getKey(), q));
+					fieldFound = true;
+				} catch (Exception e) {
+					// silently, this means that some of our full text fields don't exists in the entity
+				}
 			}
-		}
 
 		if (!fieldFound)
 			throw new SearchException(String.format("No fulltext fields found for: %s", entityClass.getSimpleName()));
@@ -164,35 +167,40 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 	 * Builds a global query builder with customizable search fields.
 	 */
 	@SuppressWarnings("unchecked")
-	public HibernateSearchElasticFilterQueryBuilder(EntityManager entityManager, String q, Map<String, FieldSearchStrategy> fields) {
+	public HibernateSearchElasticFilterQueryBuilder(@Nonnull EntityManager entityManager, @Nullable String q,
+													@Nullable Map<String, FieldSearchStrategy> fields) {
 		this(entityManager, (Class) Object.class, q, fields);
 	}
 
 	/**
 	 * Builds a global query builder with default search fields.
 	 */
-	public HibernateSearchElasticFilterQueryBuilder(EntityManager entityManager, String q) {
+	public HibernateSearchElasticFilterQueryBuilder(@Nonnull EntityManager entityManager, @Nullable String q) {
 		this(entityManager, q, defaultSearchFields());
 	}
 
+	@Nonnull
 	@Override
 	public HibernateSearchElasticQueryBuilderContext<E> context() {
 		return context;
 	}
 
+	@Nonnull
 	@Override
-	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, DateRangeQueryFilter filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, P> add(@Nonnull String field, DateRangeQueryFilter filter) {
 		addRangeQuery(field, filter.calculateFrom(), filter.calculateTo(), false);
 		return this;
 	}
 
+	@Nonnull
 	@Override
-	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, EntityQueryFilter<?> filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, P> add(@Nonnull String field, EntityQueryFilter<?> filter) {
 		return add(field, (SingleValueQueryFilter<?>) filter);
 	}
 
+	@Nonnull
 	@Override
-	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, ListQueryFilter<? extends QueryFilter> filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, P> add(@Nonnull String field, ListQueryFilter<? extends QueryFilter> filter) {
 		if (filter!=null && !filter.getFilters().isEmpty()) {
 			HibernateSearchElasticFilterQueryBuilder<E, P> internalBuilder =
 				new HibernateSearchElasticFilterQueryBuilder<>(
@@ -226,8 +234,9 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 		return this;
 	}
 
+	@Nonnull
 	@Override
-	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, SingleValueQueryFilter<?> filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, P> add(@Nonnull String field, SingleValueQueryFilter<?> filter) {
 		if (filter!=null)
 
 			switch (filter.getCondition()) {
@@ -273,8 +282,9 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 		return this;
 	}
 
+	@Nonnull
 	@Override
-	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, ValueRangeQueryFilter<? extends Number> filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, P> add(@Nonnull String field, ValueRangeQueryFilter<? extends Number> filter) {
 		addRangeQuery(field, filter.getFrom(), filter.getTo(), true);
 		return this;
 	}
@@ -294,12 +304,14 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 		return query;
 	}
 
+	@Nonnull
 	@Override
-	public FullTextQuery build(Pageable pageable, Sortable<?> sortable) {
+	public FullTextQuery build(@Nonnull Pageable pageable, @Nonnull Sortable<?> sortable) {
 		return context.getHibernateSearch().buildQuery(
 			new ElasticsearchJsonQueryDescriptor(EQL_BUILDER.toJson(context.getEqlRoot())), context.getEntityClass());
 	}
 
+	@Nonnull
 	@SuppressWarnings("unchecked")
 	@Override
 	public P list(Pageable pageable, Sortable<?> sortable) {
