@@ -2,7 +2,6 @@ package com.lifeinide.jsonql.hibernate.search.elastic.test;
 
 import com.lifeinide.jsonql.core.dto.Page;
 import com.lifeinide.jsonql.core.test.JsonQLBaseQueryBuilderTest;
-import com.lifeinide.jsonql.core.test.JsonQLQueryBuilderTestFeature;
 import com.lifeinide.jsonql.hibernate.search.elastic.DefaultHibernateSearchElasticFilterQueryBuilder;
 import com.lifeinide.jsonql.hibernate.search.elastic.HibernateSearchElasticFilterQueryBuilder;
 import org.junit.jupiter.api.AfterAll;
@@ -43,15 +42,6 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 	public void done() {
 		if (entityManagerFactory!=null)
 			entityManagerFactory.close();
-	}
-
-	@Override
-	protected boolean supports(JsonQLQueryBuilderTestFeature feature) {
-		// TODOLF enable sorting
-		if (feature.equals(JsonQLQueryBuilderTestFeature.SORTING))
-			return false;
-
-		return super.supports(feature);
 	}
 
 	@Override

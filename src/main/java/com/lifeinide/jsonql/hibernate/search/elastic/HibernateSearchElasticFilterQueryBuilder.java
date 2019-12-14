@@ -3,9 +3,9 @@ package com.lifeinide.jsonql.hibernate.search.elastic;
 import com.lifeinide.jsonql.core.dto.Page;
 import com.lifeinide.jsonql.core.enums.QueryConjunction;
 import com.lifeinide.jsonql.core.filters.*;
-import com.lifeinide.jsonql.core.intr.FilterQueryBuilder;
-import com.lifeinide.jsonql.core.intr.QueryFilter;
+import com.lifeinide.jsonql.core.intr.*;
 import com.lifeinide.jsonql.elasticql.EQLBuilder;
+import com.lifeinide.jsonql.elasticql.enums.EQLSortOrder;
 import com.lifeinide.jsonql.elasticql.node.component.*;
 import com.lifeinide.jsonql.elasticql.node.query.*;
 import com.lifeinide.jsonql.hibernate.search.BaseHibernateSearchFilterQueryBuilder;
@@ -19,6 +19,8 @@ import com.lifeinide.jsonql.hibernate.search.elastic.bridge.ElasticBigDecimalRan
 import org.hibernate.search.elasticsearch.impl.ElasticsearchJsonQueryDescriptor;
 import org.hibernate.search.exception.SearchException;
 import org.hibernate.search.jpa.FullTextQuery;
+import org.hibernate.search.query.dsl.sort.SortContext;
+import org.hibernate.search.query.dsl.sort.SortNativeContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +28,7 @@ import javax.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * Implementation of {@link FilterQueryBuilder} for Hibernate Search using ElasticSearch service.
@@ -292,9 +295,33 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 	}
 
 	@Override
-	public FullTextQuery build() {
+	public FullTextQuery build(Pageable pageable, Sortable<?> sortable) {
 		return context.getHibernateSearch().buildQuery(
 			new ElasticsearchJsonQueryDescriptor(EQL_BUILDER.toJson(context.getEqlRoot())), context.getEntityClass());
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public P list(Pageable pageable, Sortable<?> sortable) {
+		return (P) execute(pageable, sortable, defaultSortCustomizer(sortable), null);
+	}
+
+	protected Consumer<FullTextQuery> defaultSortCustomizer(Sortable<?> sortable) {
+		return fte -> {
+			if (sortable!=null && !sortable.getSort().isEmpty()) {
+				SortContext sortContext = context.getQueryBuilder().sort();
+				SortNativeContext sortNativeContext = null;
+				for (SortField sort: sortable.getSort()) {
+					String by = String.format("{\"order\": \"%s\"}", sort.isAsc() ? EQLSortOrder.asc : EQLSortOrder.desc);
+					if (sortNativeContext!=null)
+						sortNativeContext = sortNativeContext.andByNative(sort.getSortField(), by);
+					else
+						sortNativeContext = sortContext.byNative(sort.getSortField(), by);
+				}
+				if (sortNativeContext!=null)
+					fte.setSort(sortNativeContext.andByScore().createSort());
+			}
+		};
 	}
 
 	// TODOLF add highlight support
