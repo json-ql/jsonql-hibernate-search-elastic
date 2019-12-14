@@ -1,6 +1,7 @@
 package com.lifeinide.jsonql.hibernate.search.elastic;
 
 import com.lifeinide.jsonql.core.dto.Page;
+import com.lifeinide.jsonql.core.enums.QueryConjunction;
 import com.lifeinide.jsonql.core.filters.*;
 import com.lifeinide.jsonql.core.intr.FilterQueryBuilder;
 import com.lifeinide.jsonql.core.intr.QueryFilter;
@@ -60,6 +61,46 @@ import java.util.Map;
  * <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-keyword-analyzer.html">here</a>.
  * </p>
  *
+ * <h2>Example json with full text search and filters</h2>
+ *
+ * <pre>{@code
+ * {
+ *   "query": {
+ *     "bool": {
+ *       "should": [
+ *         {
+ *           "match": {
+ *             "text": {
+ *               "fuzziness": "AUTO",
+ *               "query": "in the middle of nowhere"
+ *             }
+ *           }
+ *         },
+ *         {
+ *           "match_phrase_prefix": {
+ *             "textid": {
+ *               "query": "in the middle of nowhere"
+ *             }
+ *           }
+ *         }
+ *       ],
+ *       "filter": [
+ *         {
+ *           "bool": {
+ *             "must": [
+ *               {
+ *                 "exists": {
+ *                   "field": "stringVal"
+ *                 }
+ *               }
+ *             ]
+ *           }
+ *         }
+ *       ]
+ *     }
+ *   }
+ * }}</pre>
+ *
  * @see HibernateSearchFilterQueryBuilder More information about Hibernate Search-related filtering.
  * @author Lukasz Frankowski
  */
@@ -117,20 +158,36 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 	@Override
 	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, ListQueryFilter<? extends QueryFilter> filter) {
-		// TODOLF implement HibernateSearchElasticFilterQueryBuilder.add
+		if (filter!=null && !filter.getFilters().isEmpty()) {
+			HibernateSearchElasticFilterQueryBuilder<E, P> internalBuilder =
+				new HibernateSearchElasticFilterQueryBuilder<>(
+					context.getHibernateSearch().entityManager(), context.getEntityClass(), context.getQuery());
 
-//		if (filter!=null) {
-//			HibernateSearchElasticFilterQueryBuilder<E, P> internalBuilder =
-//				new HibernateSearchElasticFilterQueryBuilder<>(
-//					context.getHibernateSearch().entityManager(), context.getEntityClass(), context.getQuery());
-//
-//			if (QueryConjunction.or.equals(filter.getConjunction()))
-//				internalBuilder.withOrConjunction();
-//
-//			filter.getFilters().forEach(f -> f.accept(internalBuilder, field));
-//			internalBuilder.buildPredicate().ifPresent(predicate -> context.getPredicates().add(predicate));
-//		}
+			filter.getFilters().forEach(f -> f.accept(internalBuilder, field));
 
+			switch (filter.getConjunction()) {
+
+				// for "and" query we can just take the same bool as produced from the internal builder and use it in this builder filters
+				case and:
+					context.getEqlFilterBool().withMust(EQLBoolComponent.of(internalBuilder.context().getEqlFilterBool()));
+					break;
+
+				// for "or" query we can need to convert "must" to "should", and "must_not"
+				case or:
+					internalBuilder.context().getEqlFilterBool().getShould().forEach(component ->
+						context.getEqlFilterBool().withShould(component));
+					internalBuilder.context().getEqlFilterBool().getMust().forEach(component ->
+						context.getEqlFilterBool().withShould(component));
+					internalBuilder.context().getEqlFilterBool().getMustNot().forEach(component ->
+						context.getEqlFilterBool().withShould(EQLBoolComponent.of(EQLBool.of().withMustNot(component))));
+					break;
+
+				default:
+					throw new IllegalStateException("Unexpected value: " + QueryConjunction.and.equals(filter.getConjunction()));
+			}
+
+		}
+		
 		return this;
 	}
 
