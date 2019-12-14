@@ -147,7 +147,7 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 	@Override
 	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, DateRangeQueryFilter filter) {
-		// TODOLF impl HibernateSearchFilterQueryBuilder.add
+		addRangeQuery(field, filter.calculateFrom(), filter.calculateTo(), false);
 		return this;
 	}
 
@@ -240,8 +240,23 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 	@Override
 	public HibernateSearchElasticFilterQueryBuilder<E, P> add(String field, ValueRangeQueryFilter<? extends Number> filter) {
-		// TODOLF impl HibernateSearchFilterQueryBuilder.add
+		addRangeQuery(field, filter.getFrom(), filter.getTo(), true);
 		return this;
+	}
+
+	protected <T> EQLRangeQuery<T> addRangeQuery(String field, T from, T to, boolean lte) {
+		EQLRangeQuery<T> query = new EQLRangeQuery<>();
+		if (from!=null)
+			query.setGte(from);
+		if (to!=null) {
+			if (lte)
+				query.setLte(to);
+			else
+				query.setLt(to);
+		}
+
+		context.getEqlFilterBool().getMust().add(EQLRangeComponent.of(field, query));
+		return query;
 	}
 
 	@Override
@@ -249,6 +264,8 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 		return context.getHibernateSearch().buildQuery(
 			new ElasticsearchJsonQueryDescriptor(EQL_BUILDER.toJson(context.getEqlRoot())), context.getEntityClass());
 	}
+
+	// TODOLF add highlight support
 
 	protected EQLComponent createFieldQuery(FieldSearchStrategy strategy, String field, String query) {
 		switch (strategy) {
