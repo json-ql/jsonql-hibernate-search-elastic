@@ -18,5 +18,13 @@ public class DefaultHibernateSearchElasticFilterQueryBuilder<E> extends Hibernat
 	public DefaultHibernateSearchElasticFilterQueryBuilder(EntityManager entityManager, Class<E> entityClass, String q, Map<String, FieldSearchStrategy> fields) {
 		super(entityManager, entityClass, q, fields);
 	}
+
+	public DefaultHibernateSearchElasticFilterQueryBuilder(EntityManager entityManager, String q, Map<String, FieldSearchStrategy> fields) {
+		super(entityManager, q, fields);
+	}
+
+	public DefaultHibernateSearchElasticFilterQueryBuilder(EntityManager entityManager, String q) {
+		super(entityManager, q);
+	}
 	
 }

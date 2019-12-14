@@ -128,12 +128,15 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 	protected HibernateSearchElasticQueryBuilderContext<E> context;
 
 	/**
-	 * @param entityClass Use concrete entity class to search for the specific entities, or {@code Object.class} to do a global search.
+	 * Builds a query builder for concrete entity class with default search fields.
 	 */
 	public HibernateSearchElasticFilterQueryBuilder(EntityManager entityManager, Class<E> entityClass, String q) {
 		this(entityManager, entityClass, q, defaultSearchFields());
 	}
 
+	/**
+	 * Builds a query builder for concrete entity class with customizable search fields.
+	 */
 	public HibernateSearchElasticFilterQueryBuilder(EntityManager entityManager, Class<E> entityClass, String q,
 											 		Map<String, FieldSearchStrategy> fields) {
 		HibernateSearch hibernateSearch = new HibernateSearch(entityManager);
@@ -154,6 +157,20 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 			throw new SearchException(String.format("No fulltext fields found for: %s", entityClass.getSimpleName()));
 	}
 
+	/**
+	 * Builds a global query builder with customizable search fields.
+	 */
+	@SuppressWarnings("unchecked")
+	public HibernateSearchElasticFilterQueryBuilder(EntityManager entityManager, String q, Map<String, FieldSearchStrategy> fields) {
+		this(entityManager, (Class) Object.class, q, fields);
+	}
+
+	/**
+	 * Builds a global query builder with default search fields.
+	 */
+	public HibernateSearchElasticFilterQueryBuilder(EntityManager entityManager, String q) {
+		this(entityManager, q, defaultSearchFields());
+	}
 
 	@Override
 	public HibernateSearchElasticQueryBuilderContext<E> context() {

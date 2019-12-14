@@ -3,8 +3,10 @@ package com.lifeinide.jsonql.hibernate.search.elastic.test;
 import com.lifeinide.jsonql.core.dto.Page;
 import com.lifeinide.jsonql.core.test.JsonQLBaseQueryBuilderTest;
 import com.lifeinide.jsonql.core.test.JsonQLQueryBuilderTestFeature;
+import com.lifeinide.jsonql.hibernate.search.elastic.DefaultHibernateSearchElasticFilterQueryBuilder;
 import com.lifeinide.jsonql.hibernate.search.elastic.HibernateSearchElasticFilterQueryBuilder;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -70,18 +72,16 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 
 	@Test
 	public void testLocalAndGlobalSearch() {
-		// TODOLF implement HibernateSearchQueryBuilderTest.testLocalAndGlobalSearch
-		throw new IllegalStateException("Not implemented");
-//		doWithEntityManager(em -> {
-//			DefaultHibernateSearchFilterQueryBuilder<?> qb =
-//				new DefaultHibernateSearchFilterQueryBuilder<>(em, HibernateSearchEntity.class, SEARCHABLE_STRING_PART);
-//			Page<?> page = qb.list();
-//			Assertions.assertEquals(100, page.getCount());
-//
-//			qb = new DefaultHibernateSearchFilterQueryBuilder<>(em, Object.class, SEARCHABLE_STRING_PART);
-//			page = qb.list();
-//			Assertions.assertEquals(101, page.getCount());
-//		});
+		doWithEntityManager(em -> {
+			DefaultHibernateSearchElasticFilterQueryBuilder<?> qb =
+				new DefaultHibernateSearchElasticFilterQueryBuilder<>(em, HibernateSearchElasticEntity.class, SEARCHABLE_STRING_PART);
+			Page<?> page = qb.list();
+			Assertions.assertEquals(100, page.getCount());
+
+			qb = new DefaultHibernateSearchElasticFilterQueryBuilder<>(em, SEARCHABLE_STRING_PART);
+			page = qb.list();
+			Assertions.assertEquals(101, page.getCount());
+		});
 	}
 
 	protected void doWithEntityManager(Consumer<EntityManager> c) {
