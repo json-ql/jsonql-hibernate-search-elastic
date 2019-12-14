@@ -13,6 +13,9 @@ import com.lifeinide.jsonql.hibernate.search.FieldSearchStrategy;
 import com.lifeinide.jsonql.hibernate.search.HibernateSearch;
 import com.lifeinide.jsonql.hibernate.search.HibernateSearchFilterQueryBuilder;
 import com.lifeinide.jsonql.hibernate.search.bridge.BaseDomainFieldBridge;
+import com.lifeinide.jsonql.hibernate.search.bridge.BigDecimalRangeBridge;
+import com.lifeinide.jsonql.hibernate.search.elastic.bridge.BaseElasticDomainFieldBridge;
+import com.lifeinide.jsonql.hibernate.search.elastic.bridge.ElasticBigDecimalRangeBridge;
 import org.hibernate.search.elasticsearch.impl.ElasticsearchJsonQueryDescriptor;
 import org.hibernate.search.exception.SearchException;
 import org.hibernate.search.jpa.FullTextQuery;
@@ -65,12 +68,13 @@ import java.util.Map;
  *
  * <h3>Field bridge for {@link BigDecimal}</h3>
  *
- * TODOLF docs
+ * Use {@link ElasticBigDecimalRangeBridge} in the same way as {@link BigDecimalRangeBridge} is used in
+ * {@link HibernateSearchFilterQueryBuilder} example.
  *
  * <h3>Field bridge for entities</h3>
  *
- * Use the same {@link BaseDomainFieldBridge} as for {@link HibernateSearchFilterQueryBuilder}, but with
- * {@link BaseDomainFieldBridge#supportsNulls()} == {@code true}.
+ * Use {@link BaseElasticDomainFieldBridge} in the same way as {@link BaseDomainFieldBridge} is used in
+ * {@link HibernateSearchFilterQueryBuilder} example.
  *
  * <h2>Example json with full text search and filters</h2>
  *

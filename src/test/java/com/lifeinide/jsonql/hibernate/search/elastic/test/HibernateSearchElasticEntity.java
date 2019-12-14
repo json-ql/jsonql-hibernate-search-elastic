@@ -3,7 +3,7 @@ package com.lifeinide.jsonql.hibernate.search.elastic.test;
 import com.lifeinide.jsonql.core.test.IJsonQLTestEntity;
 import com.lifeinide.jsonql.core.test.JsonQLTestEntityEnum;
 import com.lifeinide.jsonql.hibernate.search.HibernateSearch;
-import com.lifeinide.jsonql.hibernate.search.bridge.BigDecimalRangeBridge;
+import com.lifeinide.jsonql.hibernate.search.elastic.bridge.ElasticBigDecimalRangeBridge;
 import org.hibernate.search.annotations.*;
 
 import javax.persistence.*;
@@ -74,7 +74,7 @@ public class HibernateSearchElasticEntity implements IJsonQLTestEntity<Long, Hib
 	protected Long longVal;
 
 	@Field(analyze = Analyze.NO, norms = Norms.NO)
-	@FieldBridge(impl = BigDecimalRangeBridge.class) // TODOLF test with field type overwritten with FieldType.LONG + MetadataProvidingFieldBridge
+	@FieldBridge(impl = ElasticBigDecimalRangeBridge.class)
 	protected BigDecimal decimalVal;
 
 	@Field(analyze = Analyze.NO, norms = Norms.NO)
