@@ -17,5 +17,10 @@ public class DomainFieldBridge extends BaseDomainFieldBridge<IJsonQLBaseTestEnti
 	public boolean isEntity(Object entity) {
 		return entity instanceof IJsonQLBaseTestEntity;
 	}
+
+	@Override
+	protected boolean supportsNulls() {
+		return true;
+	}
 	
 }

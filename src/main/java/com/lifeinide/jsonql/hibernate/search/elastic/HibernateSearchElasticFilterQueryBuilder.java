@@ -12,6 +12,7 @@ import com.lifeinide.jsonql.hibernate.search.BaseHibernateSearchFilterQueryBuild
 import com.lifeinide.jsonql.hibernate.search.FieldSearchStrategy;
 import com.lifeinide.jsonql.hibernate.search.HibernateSearch;
 import com.lifeinide.jsonql.hibernate.search.HibernateSearchFilterQueryBuilder;
+import com.lifeinide.jsonql.hibernate.search.bridge.BaseDomainFieldBridge;
 import org.hibernate.search.elasticsearch.impl.ElasticsearchJsonQueryDescriptor;
 import org.hibernate.search.exception.SearchException;
 import org.hibernate.search.jpa.FullTextQuery;
@@ -19,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.persistence.EntityManager;
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -60,6 +62,15 @@ import java.util.Map;
  * you'd need to create your own custom keyword analyzer in ElasticSearch, as described
  * <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-keyword-analyzer.html">here</a>.
  * </p>
+ *
+ * <h3>Field bridge for {@link BigDecimal}</h3>
+ *
+ * TODOLF docs
+ *
+ * <h3>Field bridge for entities</h3>
+ *
+ * Use the same {@link BaseDomainFieldBridge} as for {@link HibernateSearchFilterQueryBuilder}, but with
+ * {@link BaseDomainFieldBridge#supportsNulls()} == {@code true}.
  *
  * <h2>Example json with full text search and filters</h2>
  *
