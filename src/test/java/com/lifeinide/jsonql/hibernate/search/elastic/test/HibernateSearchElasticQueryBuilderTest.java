@@ -4,6 +4,7 @@ import com.lifeinide.jsonql.core.dto.BasePageableRequest;
 import com.lifeinide.jsonql.core.dto.Page;
 import com.lifeinide.jsonql.core.intr.Pageable;
 import com.lifeinide.jsonql.core.intr.Sortable;
+import com.lifeinide.jsonql.core.test.IJsonQLBaseTestEntity;
 import com.lifeinide.jsonql.core.test.JsonQLBaseQueryBuilderTest;
 import com.lifeinide.jsonql.hibernate.search.FieldSearchStrategy;
 import com.lifeinide.jsonql.hibernate.search.elastic.DefaultHibernateSearchElasticFilterQueryBuilder;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.opentest4j.AssertionFailedError;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -113,7 +115,24 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 			});
 		});
 
-		// TODOLF global search
+		// global search
+		doWithEntityManager(em -> {
+			DefaultHibernateSearchElasticFilterQueryBuilder<IJsonQLBaseTestEntity> qb =
+				new DefaultHibernateSearchElasticFilterQueryBuilder<>(em, SEARCHABLE_STRING);
+			Page<ElasticSearchHighlightedResults<IJsonQLBaseTestEntity>> results =
+				qb.highlight(BasePageableRequest.ofDefault().withPageSize(20));
+			Assertions.assertEquals(101, results.getCount());
+			Assertions.assertEquals(20, results.getData().size());
+			results.getData().forEach(it -> {
+				Assertions.assertEquals(HIGHLIGHTED_SEARCHABLE_STRING, it.getHighlight());
+				try {
+					Assertions.assertEquals(HibernateSearchElasticEntity.class.getName(), it.getType());
+				} catch (AssertionFailedError e) {
+					Assertions.assertEquals(HibernateSearchElasticAssociatedEntity.class.getName(), it.getType());
+				}
+				Assertions.assertEquals(it.getEntity().getId().toString(), it.getId());
+			});
+		});
 	}
 
 	protected void doWithEntityManager(Consumer<EntityManager> c) {

@@ -155,10 +155,12 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 	HibernateSearchElasticFilterQueryBuilder<E, H, P, PH>> {
 
 	public static final Logger logger = LoggerFactory.getLogger(HibernateSearchElasticFilterQueryBuilder.class);
-	protected static final EQLBuilder EQL_BUILDER = new EQLBuilder(false);
+	public static final EQLBuilder EQL_BUILDER = new EQLBuilder(false);
+	public static final Class GLOBAL_SEARCH_CLASS = Object.class;
 
 	protected HibernateSearchElasticQueryBuilderContext<E> context;
 	protected Map<String, FieldSearchStrategy> searchableFields;
+	protected boolean global = false; // indicates global search instead of concrete entity type search
 
 	/**
 	 * Builds a query builder for concrete entity class with default search fields.
@@ -172,6 +174,9 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 	 */
 	public HibernateSearchElasticFilterQueryBuilder(@Nonnull EntityManager entityManager, @Nonnull Class<E> entityClass,
 													@Nullable String q, @Nullable Map<String, FieldSearchStrategy> fields) {
+		if (GLOBAL_SEARCH_CLASS.equals(entityClass))
+			global = true;
+
 		HibernateSearch hibernateSearch = new HibernateSearch(entityManager);
 		context = new HibernateSearchElasticQueryBuilderContext<>(q, entityClass, hibernateSearch);
 
@@ -198,7 +203,7 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 	@SuppressWarnings("unchecked")
 	public HibernateSearchElasticFilterQueryBuilder(@Nonnull EntityManager entityManager, @Nullable String q,
 													@Nullable Map<String, FieldSearchStrategy> fields) {
-		this(entityManager, (Class) Object.class, q, fields);
+		this(entityManager, GLOBAL_SEARCH_CLASS, q, fields);
 	}
 
 	/**
@@ -355,12 +360,48 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 	public static final int MAX_HIGHLIGHT_RESULT_WINDOW_SIZE = 10000;
 
+	protected static Map<Class, SearchableEntityInfo> entityInfoCache = new HashMap<>();
+
 	/**
 	 * Builds appropriate hightlight result. To be overwritten in subclasses if necessary.
 	 */
 	@SuppressWarnings("unchecked")
 	protected H buildHighlight(String id, String type, double score, String highlight) {
 		return (H) new ElasticSearchHighlightedResults<E>(id, type, score, highlight);
+	}
+
+	/**
+	 * Discovers the entity id to be loaded after search results are fetched, because ids are stored in elastic as "keyword" type
+	 * (String), we need to convert them to appropriate type to fetch the entity from EntityManager.
+	 */
+	protected SearchableEntityInfo loadEntityInfo(Class<?> entityClass) {
+		return entityInfoCache.computeIfAbsent(entityClass, it -> {
+			EntityType entityType = context.getHibernateSearch().entityManager().getMetamodel().entity(entityClass);
+			String idName = entityType.getId(entityType.getIdType().getJavaType()).getName();
+			FieldBridge fieldBridge = context.getHibernateSearch().fullTextEntityManager().getSearchFactory()
+				.getIndexedTypeDescriptor(entityClass).getIndexedField(idName).getFieldBridge();
+			if (fieldBridge instanceof TwoWayFieldBridge) {
+				FieldType fieldType = new FieldType();
+				fieldType.setStored(true);
+				return new SearchableEntityInfo(entityType, idName, id -> {
+					Document document = new Document();
+					document.add(new Field(idName, id, fieldType));
+					return ((TwoWayFieldBridge) fieldBridge).get(idName, document);
+				});
+			} else {
+				logger.warn("Cannot convert id for entity: {} and field bridge: {}. The entity won't be fetched from db.",
+					entityClass.getSimpleName(), fieldBridge);
+				return new SearchableEntityInfo(entityType, idName, null);
+			}
+		});
+	}
+
+	protected SearchableEntityInfo loadEntityInfo(String entityClassName) {
+		try {
+			return loadEntityInfo(Class.forName(entityClassName));
+		} catch (ClassNotFoundException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	/**
@@ -386,7 +427,7 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 		sortable.getSort()
 			.forEach(sort -> context.getEqlRoot().withSort(sort.getSortField(), sort.isDesc() ? EQLSort.ofDesc() : EQLSort.ofAsc()));
 
-		// add paging manually
+		// add paging manually, because in execute() we put it on FullTextQuery (because HS cuts it off from the original query)
 		if (pageable.isPaged())
 			context.getEqlRoot().withPage(pageable.getOffset(), pageable.getPageSize());
 		else
@@ -398,31 +439,13 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 		ElasticsearchIndexFamily elasticsearchIndexFamily = indexFamily.unwrap(ElasticsearchIndexFamily.class);
 		RestClient restClient = elasticsearchIndexFamily.getClient(RestClient.class);
 
-		// discover the entity id to be loaded after search results are fetched, because ids are stored in elastic as "keyword" type
-		// (String), we need to convert them to appropriate type to fetch the entity from EntityManager
-		EntityType entityType = context.getHibernateSearch().entityManager().getMetamodel().entity(context.getEntityClass());
-		String idName = entityType.getId(entityType.getIdType().getJavaType()).getName();
-		FieldBridge fieldBridge = context.getIndexedTypeDescriptor().getIndexedField(idName).getFieldBridge();
-		Function<String, Object> idConverter;
-		if (fieldBridge instanceof TwoWayFieldBridge) {
-			FieldType fieldType = new FieldType();
-			fieldType.setStored(true);
-			idConverter = id -> {
-				Document document = new Document();
-				document.add(new Field(idName, id, fieldType));
-				return ((TwoWayFieldBridge) fieldBridge).get(idName, document);
-			};
-		} else {
-			idConverter = null;
-			logger.warn("Cannot convert id from field bridge: {}. The entity won't be fetched from db.", fieldBridge);
-		}
-
 		// get the highlighted results
 		try {
-			// make request
+			// make request (to concrete entity index or _all index)
+			String indexName = global ? "_all" : context.getIndexedTypeDescriptor().getIndexDescriptors().iterator().next().getName();
 			Response httpResponse = restClient.performRequest(
 				"POST",
-				String.format("/%s/_search", context.getIndexedTypeDescriptor().getIndexDescriptors().iterator().next().getName()),
+				String.format("/%s/_search", indexName),
 				new HashMap<>(),
 				new NStringEntity(EQL_BUILDER.toJsonString(context.getEqlRoot()), ContentType.APPLICATION_JSON)
 			);
@@ -432,7 +455,7 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 			// transform json results into a list of highlighted results
 			List<ElasticSearchHighlightedResults<E>> resultList = new ArrayList<>();
-			Map<Object, ElasticSearchHighlightedResults<E>> idMap = new LinkedHashMap<>();
+			Map<SearchableEntityInfo, Map<Object, ElasticSearchHighlightedResults>> idMap = new LinkedHashMap<>();
 			JsonObject hits = jsonResponse.getAsJsonObject("hits");
 			long total = hits.get("total").getAsLong();
 			hits.getAsJsonArray("hits").forEach(it -> {
@@ -448,28 +471,32 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 					String.join(" ", highlightList.toArray(new String[0]))
 				);
 
-				if (idConverter!=null)
-					idMap.put(idConverter.apply(result.getId()), result);
-
 				resultList.add(result);
+
+				// separate fetched entities by type and get its real converted id
+				SearchableEntityInfo entityInfo = loadEntityInfo(result.getType());
+				if (entityInfo.idConverter!=null)
+					idMap.computeIfAbsent(entityInfo, it1 -> new LinkedHashMap<>())
+						.put(entityInfo.idConverter.apply(result.getId()), result);
 			});
 
 			// having idMap filled we can now fetch real entities from the db and set them for the results list
-			if (!idMap.isEmpty()) {
-				context.getHibernateSearch().entityManager()
-					.createQuery(String.format("select e from %s e where id in :idList", entityType.getName()), context.getEntityClass())
-					.setParameter("idList", idMap.keySet())
-					.getResultList()
-					.forEach(entity -> {
-						Object entityId = context.getHibernateSearch().entityManager()
-							.getEntityManagerFactory().getPersistenceUnitUtil().getIdentifier(entity);
-						if (entityId!=null) {
-							ElasticSearchHighlightedResults<E> result = idMap.get(entityId);
-							if (result!=null)
-								result.setEntity(entity);
-						}
-					});
-			}
+			idMap.forEach((entityInfo, localIdMap) -> context.getHibernateSearch().entityManager()
+				.createQuery(String.format("select e from %s e where %s in :idList",
+						entityInfo.entityType.getName(),
+						entityInfo.idName),
+					entityInfo.entityType.getJavaType())
+				.setParameter("idList", localIdMap.keySet())
+				.getResultList()
+				.forEach(entity -> {
+					Object entityId = context.getHibernateSearch().entityManager()
+						.getEntityManagerFactory().getPersistenceUnitUtil().getIdentifier(entity);
+					if (entityId != null) {
+						ElasticSearchHighlightedResults result = localIdMap.get(entityId);
+						if (result != null)
+							result.setEntity(entity);
+					}
+				}));
 
 			return (PH) buildPageableResult(pageable.getPageSize(), pageable.getPage(), total, resultList);
 		} catch (RuntimeException e) {
@@ -497,6 +524,38 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 	/** @see #highlight(Pageable, Sortable)  **/
 	@Nonnull public PH highlight(@Nullable PageableSortable<?> ps) {
 		return highlight(ps, ps);
+	}
+
+	protected static class SearchableEntityInfo {
+		@Nonnull protected EntityType entityType;
+		@Nonnull protected String idName;
+		@Nullable protected Function<String, Object> idConverter;
+
+		public SearchableEntityInfo(@Nonnull EntityType entityType, @Nonnull String idName, @Nullable Function<String, Object> idConverter) {
+			this.entityType = entityType;
+			this.idName = idName;
+			this.idConverter = idConverter;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (!(o instanceof SearchableEntityInfo)) return false;
+			SearchableEntityInfo that = (SearchableEntityInfo) o;
+			return entityType.getJavaType().equals(that.entityType.getJavaType());
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(entityType.getJavaType());
+		}
+
+		@Override
+		public String toString() {
+			return "SearchableEntityInfo{" +
+				"entityType=" + entityType.getJavaType() +
+				'}';
+		}
 	}
 
 	/**********************************************************************************************************
