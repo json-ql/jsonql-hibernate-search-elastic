@@ -1,11 +1,14 @@
 package com.lifeinide.jsonql.hibernate.search.elastic;
 
+import com.lifeinide.jsonql.core.dto.BasePageableRequest;
 import com.lifeinide.jsonql.core.dto.Page;
 import com.lifeinide.jsonql.core.enums.QueryConjunction;
 import com.lifeinide.jsonql.core.filters.*;
 import com.lifeinide.jsonql.core.intr.*;
 import com.lifeinide.jsonql.elasticql.EQLBuilder;
 import com.lifeinide.jsonql.elasticql.enums.EQLSortOrder;
+import com.lifeinide.jsonql.elasticql.node.EQLHighlight;
+import com.lifeinide.jsonql.elasticql.node.EQLSort;
 import com.lifeinide.jsonql.elasticql.node.component.*;
 import com.lifeinide.jsonql.elasticql.node.query.*;
 import com.lifeinide.jsonql.hibernate.search.BaseHibernateSearchFilterQueryBuilder;
@@ -16,8 +19,23 @@ import com.lifeinide.jsonql.hibernate.search.bridge.BaseDomainFieldBridge;
 import com.lifeinide.jsonql.hibernate.search.bridge.BigDecimalRangeBridge;
 import com.lifeinide.jsonql.hibernate.search.elastic.bridge.BaseElasticDomainFieldBridge;
 import com.lifeinide.jsonql.hibernate.search.elastic.bridge.ElasticBigDecimalRangeBridge;
+import org.apache.http.HttpEntity;
+import org.apache.http.entity.ContentType;
+import org.apache.http.nio.entity.NStringEntity;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
+import org.elasticsearch.client.Response;
+import org.elasticsearch.client.RestClient;
+import org.hibernate.search.SearchFactory;
+import org.hibernate.search.bridge.FieldBridge;
+import org.hibernate.search.bridge.TwoWayFieldBridge;
 import org.hibernate.search.elasticsearch.impl.ElasticsearchJsonQueryDescriptor;
+import org.hibernate.search.elasticsearch.indexes.ElasticsearchIndexFamily;
+import org.hibernate.search.elasticsearch.indexes.ElasticsearchIndexFamilyType;
+import org.hibernate.search.elasticsearch.query.impl.ElasticsearchHSQueryImpl;
 import org.hibernate.search.exception.SearchException;
+import org.hibernate.search.indexes.IndexFamily;
 import org.hibernate.search.jpa.FullTextQuery;
 import org.hibernate.search.query.dsl.sort.SortContext;
 import org.hibernate.search.query.dsl.sort.SortNativeContext;
@@ -27,10 +45,13 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.persistence.EntityManager;
+import javax.persistence.metamodel.EntityType;
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Implementation of {@link FilterQueryBuilder} for Hibernate Search using ElasticSearch service.
@@ -124,13 +145,14 @@ import java.util.function.Consumer;
  * @see HibernateSearchFilterQueryBuilder More information about Hibernate Search-related filtering.
  * @author Lukasz Frankowski
  */
-public class HibernateSearchElasticFilterQueryBuilder<E, P extends Page<E>>
-extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryBuilderContext<E>, HibernateSearchElasticFilterQueryBuilder<E, P>> {
+public class HibernateSearchElasticFilterQueryBuilder<E, P extends Page<E>, PH extends Page<ElasticSearchHighlightedResults<E>>>
+extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryBuilderContext<E>, HibernateSearchElasticFilterQueryBuilder<E, P, PH>> {
 
 	public static final Logger logger = LoggerFactory.getLogger(HibernateSearchElasticFilterQueryBuilder.class);
 	protected static final EQLBuilder EQL_BUILDER = new EQLBuilder();
 
 	protected HibernateSearchElasticQueryBuilderContext<E> context;
+	protected Map<String, FieldSearchStrategy> searchableFields;
 
 	/**
 	 * Builds a query builder for concrete entity class with default search fields.
@@ -148,6 +170,7 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 		context = new HibernateSearchElasticQueryBuilderContext<>(q, entityClass, hibernateSearch);
 
 		boolean fieldFound = false;
+		this.searchableFields = fields!=null ? fields : new HashMap<>();
 
 		if (fields!=null && q!=null)
 			for (Map.Entry<String, FieldSearchStrategy> entry: fields.entrySet()) {
@@ -187,22 +210,23 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 	@Nonnull
 	@Override
-	public HibernateSearchElasticFilterQueryBuilder<E, P> add(@Nonnull String field, DateRangeQueryFilter filter) {
-		addRangeQuery(field, filter.calculateFrom(), filter.calculateTo(), false);
+	public HibernateSearchElasticFilterQueryBuilder<E, P, PH> add(@Nonnull String field, DateRangeQueryFilter filter) {
+		if (filter!=null)
+			addRangeQuery(field, filter.calculateFrom(), filter.calculateTo(), false);
 		return this;
 	}
 
 	@Nonnull
 	@Override
-	public HibernateSearchElasticFilterQueryBuilder<E, P> add(@Nonnull String field, EntityQueryFilter<?> filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, P, PH> add(@Nonnull String field, EntityQueryFilter<?> filter) {
 		return add(field, (SingleValueQueryFilter<?>) filter);
 	}
 
 	@Nonnull
 	@Override
-	public HibernateSearchElasticFilterQueryBuilder<E, P> add(@Nonnull String field, ListQueryFilter<? extends QueryFilter> filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, P, PH> add(@Nonnull String field, ListQueryFilter<? extends QueryFilter> filter) {
 		if (filter!=null && !filter.getFilters().isEmpty()) {
-			HibernateSearchElasticFilterQueryBuilder<E, P> internalBuilder =
+			HibernateSearchElasticFilterQueryBuilder<E, P, PH> internalBuilder =
 				new HibernateSearchElasticFilterQueryBuilder<>(
 					context.getHibernateSearch().entityManager(), context.getEntityClass(), context.getQuery());
 
@@ -236,7 +260,7 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 	@Nonnull
 	@Override
-	public HibernateSearchElasticFilterQueryBuilder<E, P> add(@Nonnull String field, SingleValueQueryFilter<?> filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, P, PH> add(@Nonnull String field, SingleValueQueryFilter<?> filter) {
 		if (filter!=null)
 
 			switch (filter.getCondition()) {
@@ -284,8 +308,9 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 	@Nonnull
 	@Override
-	public HibernateSearchElasticFilterQueryBuilder<E, P> add(@Nonnull String field, ValueRangeQueryFilter<? extends Number> filter) {
-		addRangeQuery(field, filter.getFrom(), filter.getTo(), true);
+	public HibernateSearchElasticFilterQueryBuilder<E, P, PH> add(@Nonnull String field, ValueRangeQueryFilter<? extends Number> filter) {
+		if (filter!=null)
+			addRangeQuery(field, filter.getFrom(), filter.getTo(), true);
 		return this;
 	}
 
@@ -318,6 +343,92 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 		return (P) execute(pageable, sortable, defaultSortCustomizer(sortable), null);
 	}
 
+	/**
+	 * Provides highlighted results in the same way as {@link #list(Pageable, Sortable)} provides entity results.
+	 * <p>
+	 * Hibernate Search doesn't support highlighting for ElasticSearch query and {@link ElasticsearchHSQueryImpl} is poorly written, so that it
+	 * doesn't allow to create extended classes to implement this feature. This is why with this feature we need to go with low level
+	 * client and query. But, when we go with TODOLF finish docs
+	 * </p>
+	 */
+	@Nonnull public PH highlight(@Nullable Pageable pageable, @Nullable Sortable<?> sortable) {
+
+		if (pageable==null)
+			pageable = BasePageableRequest.ofUnpaged();
+		if (sortable==null)
+			sortable = BasePageableRequest.ofUnpaged();
+
+		// add highlight
+		context.getEqlRoot().withHighlight(EQLHighlight.of(searchableFields.keySet()));
+
+		// add sorting manually, because in defaultSortCustomizer() we put it on FullTextQuery (because HS cuts it off from the original query)
+		sortable.getSort()
+			.forEach(sort -> context.getEqlRoot().withSort(sort.getSortField(), sort.isDesc() ? EQLSort.ofDesc() : EQLSort.ofAsc()));
+
+		// add paging manually
+		if (pageable.isPaged())
+			context.getEqlRoot().withPage(pageable.getOffset(), pageable.getPageSize());
+
+		// extract ES low-level client
+		SearchFactory searchFactory = context.getHibernateSearch().fullTextEntityManager().getSearchFactory();
+		IndexFamily indexFamily = searchFactory.getIndexFamily(ElasticsearchIndexFamilyType.get());
+		ElasticsearchIndexFamily elasticsearchIndexFamily = indexFamily.unwrap(ElasticsearchIndexFamily.class);
+		RestClient restClient = elasticsearchIndexFamily.getClient(RestClient.class);
+
+		// discover the entity id to be loaded after search results are fetched, because ids are stored in elastic as "keyword" type
+		// (String), we need to convert them to appropriate type to fetch the entity from EntityManager
+		EntityType entityType = context.getHibernateSearch().entityManager().getMetamodel().entity(context.getEntityClass());
+		String idName = entityType.getId(entityType.getIdType().getJavaType()).getName();
+		FieldBridge fieldBridge = context.getIndexedTypeDescriptor().getIndexedField(idName).getFieldBridge();
+		Function<String, Object> idConverter = null;
+		if (fieldBridge instanceof TwoWayFieldBridge) {
+			FieldType fieldType = new FieldType();
+			fieldType.setStored(true);
+			idConverter = id -> {
+				Document document = new Document();
+				document.add(new Field(idName, id, fieldType));
+				return ((TwoWayFieldBridge) fieldBridge).get(idName, document);
+			};
+		} else {
+			throw new IllegalStateException(String.format("Cannot convert id from field bridge: %s", fieldBridge));
+		}
+
+		// get the highlighted results
+		try {
+			String urlPath = String.format("/%s/_search", context.getIndexedTypeDescriptor().getIndexDescriptors().iterator().next().getName());
+			HttpEntity entity = new NStringEntity(EQL_BUILDER.toJsonString(context.getEqlRoot()), ContentType.APPLICATION_JSON);
+			Response response = restClient.performRequest("POST", urlPath, new HashMap<>(), entity);
+
+			// TODOLF build page, transform results and return them
+
+			return null;
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new RuntimeException("Error fetching results from ES low level client", e);
+		}
+	}
+
+	/** @see #highlight(Pageable, Sortable)  **/
+	@Nonnull public PH highlight() {
+		return highlight(null, null);
+	}
+
+	/** @see #highlight(Pageable, Sortable)  **/
+	@Nonnull public PH highlight(@Nullable Pageable pageable) {
+		return highlight(pageable, null);
+	}
+
+	/** @see #highlight(Pageable, Sortable)  **/
+	@Nonnull public PH highlight(@Nullable Sortable<?> sortable) {
+		return highlight(null, sortable);
+	}
+
+	/** @see #highlight(Pageable, Sortable)  **/
+	@Nonnull public PH highlight(@Nullable PageableSortable<?> ps) {
+		return highlight(ps, ps);
+	}
+
 	protected Consumer<FullTextQuery> defaultSortCustomizer(Sortable<?> sortable) {
 		return fte -> {
 			if (sortable!=null && !sortable.getSort().isEmpty()) {
@@ -335,8 +446,6 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 			}
 		};
 	}
-
-	// TODOLF add highlight support
 
 	protected EQLComponent createFieldQuery(FieldSearchStrategy strategy, String field, String query) {
 		switch (strategy) {
@@ -360,6 +469,5 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 		map.put(HibernateSearch.FIELD_ID, FieldSearchStrategy.WILDCARD_PHRASE);
 		return map;
 	}
-
 
 }

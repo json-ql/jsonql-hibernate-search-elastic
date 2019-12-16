@@ -9,7 +9,8 @@ import java.util.Map;
 /**
  * @author Lukasz Frankowski
  */
-public class DefaultHibernateSearchElasticFilterQueryBuilder<E> extends HibernateSearchElasticFilterQueryBuilder<E, Page<E>> {
+public class DefaultHibernateSearchElasticFilterQueryBuilder<E>
+extends HibernateSearchElasticFilterQueryBuilder<E, Page<E>, Page<ElasticSearchHighlightedResults<E>>> {
 
 	public DefaultHibernateSearchElasticFilterQueryBuilder(EntityManager entityManager, Class<E> entityClass, String q) {
 		super(entityManager, entityClass, q);

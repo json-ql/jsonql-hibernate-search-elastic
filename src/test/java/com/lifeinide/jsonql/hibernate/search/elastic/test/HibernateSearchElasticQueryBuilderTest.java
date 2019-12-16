@@ -1,8 +1,10 @@
 package com.lifeinide.jsonql.hibernate.search.elastic.test;
 
+import com.lifeinide.jsonql.core.dto.BasePageableRequest;
 import com.lifeinide.jsonql.core.dto.Page;
 import com.lifeinide.jsonql.core.test.JsonQLBaseQueryBuilderTest;
 import com.lifeinide.jsonql.hibernate.search.elastic.DefaultHibernateSearchElasticFilterQueryBuilder;
+import com.lifeinide.jsonql.hibernate.search.elastic.ElasticSearchHighlightedResults;
 import com.lifeinide.jsonql.hibernate.search.elastic.HibernateSearchElasticFilterQueryBuilder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
@@ -23,7 +25,11 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 	Long,
 	HibernateSearchElasticAssociatedEntity,
 	HibernateSearchElasticEntity,
-	HibernateSearchElasticFilterQueryBuilder<HibernateSearchElasticEntity, Page<HibernateSearchElasticEntity>>
+	HibernateSearchElasticFilterQueryBuilder<
+		HibernateSearchElasticEntity,
+		Page<HibernateSearchElasticEntity>,
+		Page<ElasticSearchHighlightedResults<HibernateSearchElasticEntity>>
+	>
 > {
 
 	public static final String PERSISTENCE_UNIT_NAME = "test-jpa";
@@ -55,7 +61,8 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 	}
 
 	@Override
-	protected void doTest(BiConsumer<EntityManager, HibernateSearchElasticFilterQueryBuilder<HibernateSearchElasticEntity, Page<HibernateSearchElasticEntity>>> c) {
+	protected void doTest(BiConsumer<EntityManager, HibernateSearchElasticFilterQueryBuilder<HibernateSearchElasticEntity,
+		Page<HibernateSearchElasticEntity>, Page<ElasticSearchHighlightedResults<HibernateSearchElasticEntity>>>> c) {
 		doWithEntityManager(em -> c.accept(em,
 			new HibernateSearchElasticFilterQueryBuilder<>(em, HibernateSearchElasticEntity.class, SEARCHABLE_STRING)));
 	}
@@ -72,6 +79,16 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 			page = qb.list();
 			Assertions.assertEquals(101, page.getCount());
 		});
+	}
+
+	@Test
+	public void testHighlight() {
+		doTest((em, qb) -> {
+			qb.highlight(BasePageableRequest.ofDefault().withPageSize(20));
+			// TODOLF assertions
+		});
+
+		// TODOLF test global search
 	}
 
 	protected void doWithEntityManager(Consumer<EntityManager> c) {
