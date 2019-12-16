@@ -1,5 +1,6 @@
 package com.lifeinide.jsonql.hibernate.search.elastic;
 
+import com.google.gson.JsonObject;
 import com.lifeinide.jsonql.core.dto.BasePageableRequest;
 import com.lifeinide.jsonql.core.dto.Page;
 import com.lifeinide.jsonql.core.enums.QueryConjunction;
@@ -19,7 +20,6 @@ import com.lifeinide.jsonql.hibernate.search.bridge.BaseDomainFieldBridge;
 import com.lifeinide.jsonql.hibernate.search.bridge.BigDecimalRangeBridge;
 import com.lifeinide.jsonql.hibernate.search.elastic.bridge.BaseElasticDomainFieldBridge;
 import com.lifeinide.jsonql.hibernate.search.elastic.bridge.ElasticBigDecimalRangeBridge;
-import org.apache.http.HttpEntity;
 import org.apache.http.entity.ContentType;
 import org.apache.http.nio.entity.NStringEntity;
 import org.apache.lucene.document.Document;
@@ -46,10 +46,10 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.persistence.EntityManager;
 import javax.persistence.metamodel.EntityType;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -102,6 +102,11 @@ import java.util.function.Function;
  * Use {@link BaseElasticDomainFieldBridge} in the same way as {@link BaseDomainFieldBridge} is used in
  * {@link HibernateSearchFilterQueryBuilder} example.
  *
+ * <h2>Highlighting support</h2>
+ *
+ * This query builder supports search results highlighting with ElasticSearch low level client. For more info please take a look at
+ * {@link #highlight(Pageable, Sortable)} and other methods from hightlighting section.
+ *
  * <h2>Example json with full text search and filters</h2>
  *
  * <pre>{@code
@@ -145,11 +150,12 @@ import java.util.function.Function;
  * @see HibernateSearchFilterQueryBuilder More information about Hibernate Search-related filtering.
  * @author Lukasz Frankowski
  */
-public class HibernateSearchElasticFilterQueryBuilder<E, P extends Page<E>, PH extends Page<ElasticSearchHighlightedResults<E>>>
-extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryBuilderContext<E>, HibernateSearchElasticFilterQueryBuilder<E, P, PH>> {
+public class HibernateSearchElasticFilterQueryBuilder<E, H extends ElasticSearchHighlightedResults<E>, P extends Page<E>, PH extends Page<H>>
+extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryBuilderContext<E>,
+	HibernateSearchElasticFilterQueryBuilder<E, H, P, PH>> {
 
 	public static final Logger logger = LoggerFactory.getLogger(HibernateSearchElasticFilterQueryBuilder.class);
-	protected static final EQLBuilder EQL_BUILDER = new EQLBuilder();
+	protected static final EQLBuilder EQL_BUILDER = new EQLBuilder(false);
 
 	protected HibernateSearchElasticQueryBuilderContext<E> context;
 	protected Map<String, FieldSearchStrategy> searchableFields;
@@ -210,7 +216,7 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 	@Nonnull
 	@Override
-	public HibernateSearchElasticFilterQueryBuilder<E, P, PH> add(@Nonnull String field, DateRangeQueryFilter filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, H, P, PH> add(@Nonnull String field, DateRangeQueryFilter filter) {
 		if (filter!=null)
 			addRangeQuery(field, filter.calculateFrom(), filter.calculateTo(), false);
 		return this;
@@ -218,15 +224,15 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 	@Nonnull
 	@Override
-	public HibernateSearchElasticFilterQueryBuilder<E, P, PH> add(@Nonnull String field, EntityQueryFilter<?> filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, H, P, PH> add(@Nonnull String field, EntityQueryFilter<?> filter) {
 		return add(field, (SingleValueQueryFilter<?>) filter);
 	}
 
 	@Nonnull
 	@Override
-	public HibernateSearchElasticFilterQueryBuilder<E, P, PH> add(@Nonnull String field, ListQueryFilter<? extends QueryFilter> filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, H, P, PH> add(@Nonnull String field, ListQueryFilter<? extends QueryFilter> filter) {
 		if (filter!=null && !filter.getFilters().isEmpty()) {
-			HibernateSearchElasticFilterQueryBuilder<E, P, PH> internalBuilder =
+			HibernateSearchElasticFilterQueryBuilder<E, H, P, PH> internalBuilder =
 				new HibernateSearchElasticFilterQueryBuilder<>(
 					context.getHibernateSearch().entityManager(), context.getEntityClass(), context.getQuery());
 
@@ -260,7 +266,7 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 	@Nonnull
 	@Override
-	public HibernateSearchElasticFilterQueryBuilder<E, P, PH> add(@Nonnull String field, SingleValueQueryFilter<?> filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, H, P, PH> add(@Nonnull String field, SingleValueQueryFilter<?> filter) {
 		if (filter!=null)
 
 			switch (filter.getCondition()) {
@@ -308,7 +314,7 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 	@Nonnull
 	@Override
-	public HibernateSearchElasticFilterQueryBuilder<E, P, PH> add(@Nonnull String field, ValueRangeQueryFilter<? extends Number> filter) {
+	public HibernateSearchElasticFilterQueryBuilder<E, H, P, PH> add(@Nonnull String field, ValueRangeQueryFilter<? extends Number> filter) {
 		if (filter!=null)
 			addRangeQuery(field, filter.getFrom(), filter.getTo(), true);
 		return this;
@@ -343,14 +349,29 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 		return (P) execute(pageable, sortable, defaultSortCustomizer(sortable), null);
 	}
 
+	/**********************************************************************************************************
+	 * Highlight support
+	 **********************************************************************************************************/
+
+	public static final int MAX_HIGHLIGHT_RESULT_WINDOW_SIZE = 10000;
+
+	/**
+	 * Builds appropriate hightlight result. To be overwritten in subclasses if necessary.
+	 */
+	@SuppressWarnings("unchecked")
+	protected H buildHighlight(String id, String type, double score, String highlight) {
+		return (H) new ElasticSearchHighlightedResults<E>(id, type, score, highlight);
+	}
+
 	/**
 	 * Provides highlighted results in the same way as {@link #list(Pageable, Sortable)} provides entity results.
 	 * <p>
-	 * Hibernate Search doesn't support highlighting for ElasticSearch query and {@link ElasticsearchHSQueryImpl} is poorly written, so that it
-	 * doesn't allow to create extended classes to implement this feature. This is why with this feature we need to go with low level
-	 * client and query. But, when we go with TODOLF finish docs
+	 * Hibernate Search doesn't support highlighting for ElasticSearch query and {@link ElasticsearchHSQueryImpl} is poorly written,
+	 * and it doesn't allow to create extended classes to implement this feature. This is why with this feature we need to go with low
+	 * level client and query.
 	 * </p>
 	 */
+	@SuppressWarnings("unchecked")
 	@Nonnull public PH highlight(@Nullable Pageable pageable, @Nullable Sortable<?> sortable) {
 
 		if (pageable==null)
@@ -368,6 +389,8 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 		// add paging manually
 		if (pageable.isPaged())
 			context.getEqlRoot().withPage(pageable.getOffset(), pageable.getPageSize());
+		else
+			context.getEqlRoot().withPage(0, MAX_HIGHLIGHT_RESULT_WINDOW_SIZE);
 
 		// extract ES low-level client
 		SearchFactory searchFactory = context.getHibernateSearch().fullTextEntityManager().getSearchFactory();
@@ -380,7 +403,7 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 		EntityType entityType = context.getHibernateSearch().entityManager().getMetamodel().entity(context.getEntityClass());
 		String idName = entityType.getId(entityType.getIdType().getJavaType()).getName();
 		FieldBridge fieldBridge = context.getIndexedTypeDescriptor().getIndexedField(idName).getFieldBridge();
-		Function<String, Object> idConverter = null;
+		Function<String, Object> idConverter;
 		if (fieldBridge instanceof TwoWayFieldBridge) {
 			FieldType fieldType = new FieldType();
 			fieldType.setStored(true);
@@ -390,18 +413,65 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 				return ((TwoWayFieldBridge) fieldBridge).get(idName, document);
 			};
 		} else {
-			throw new IllegalStateException(String.format("Cannot convert id from field bridge: %s", fieldBridge));
+			idConverter = null;
+			logger.warn("Cannot convert id from field bridge: {}. The entity won't be fetched from db.", fieldBridge);
 		}
 
 		// get the highlighted results
 		try {
-			String urlPath = String.format("/%s/_search", context.getIndexedTypeDescriptor().getIndexDescriptors().iterator().next().getName());
-			HttpEntity entity = new NStringEntity(EQL_BUILDER.toJsonString(context.getEqlRoot()), ContentType.APPLICATION_JSON);
-			Response response = restClient.performRequest("POST", urlPath, new HashMap<>(), entity);
+			// make request
+			Response httpResponse = restClient.performRequest(
+				"POST",
+				String.format("/%s/_search", context.getIndexedTypeDescriptor().getIndexDescriptors().iterator().next().getName()),
+				new HashMap<>(),
+				new NStringEntity(EQL_BUILDER.toJsonString(context.getEqlRoot()), ContentType.APPLICATION_JSON)
+			);
+			JsonObject jsonResponse = EQL_BUILDER
+				.getGson()
+				.fromJson(new BufferedReader(new InputStreamReader(httpResponse.getEntity().getContent())), JsonObject.class);
 
-			// TODOLF build page, transform results and return them
+			// transform json results into a list of highlighted results
+			List<ElasticSearchHighlightedResults<E>> resultList = new ArrayList<>();
+			Map<Object, ElasticSearchHighlightedResults<E>> idMap = new LinkedHashMap<>();
+			JsonObject hits = jsonResponse.getAsJsonObject("hits");
+			long total = hits.get("total").getAsLong();
+			hits.getAsJsonArray("hits").forEach(it -> {
+				JsonObject el = (JsonObject) it;
+				List<String> highlightList = new ArrayList<>();
+				el.getAsJsonObject("highlight").entrySet().forEach(entry ->
+					entry.getValue().getAsJsonArray().forEach(it1 -> highlightList.add(it1.getAsString())));
 
-			return null;
+				H result = buildHighlight(
+					el.get("_id").getAsString(),
+					el.get("_type").getAsString(),
+					el.get("_score").isJsonNull() ? 0 : el.get("_score").getAsDouble(),
+					String.join(" ", highlightList.toArray(new String[0]))
+				);
+
+				if (idConverter!=null)
+					idMap.put(idConverter.apply(result.getId()), result);
+
+				resultList.add(result);
+			});
+
+			// having idMap filled we can now fetch real entities from the db and set them for the results list
+			if (!idMap.isEmpty()) {
+				context.getHibernateSearch().entityManager()
+					.createQuery(String.format("select e from %s e where id in :idList", entityType.getName()), context.getEntityClass())
+					.setParameter("idList", idMap.keySet())
+					.getResultList()
+					.forEach(entity -> {
+						Object entityId = context.getHibernateSearch().entityManager()
+							.getEntityManagerFactory().getPersistenceUnitUtil().getIdentifier(entity);
+						if (entityId!=null) {
+							ElasticSearchHighlightedResults<E> result = idMap.get(entityId);
+							if (result!=null)
+								result.setEntity(entity);
+						}
+					});
+			}
+
+			return (PH) buildPageableResult(pageable.getPageSize(), pageable.getPage(), total, resultList);
 		} catch (RuntimeException e) {
 			throw e;
 		} catch (Exception e) {
@@ -428,6 +498,10 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 	@Nonnull public PH highlight(@Nullable PageableSortable<?> ps) {
 		return highlight(ps, ps);
 	}
+
+	/**********************************************************************************************************
+	 * Other stuff
+	 **********************************************************************************************************/
 
 	protected Consumer<FullTextQuery> defaultSortCustomizer(Sortable<?> sortable) {
 		return fte -> {
