@@ -1,6 +1,6 @@
 # jsonql-hibernate-search-elastic
 
-Hibernate Search filter query builder for [JSON-QL](https://github.com/json-ql). To be used with Hibernate Search using ElasticSearch as a storage backend. Allows to apply filters with Hibernate Search using Elastic Search JSON query syntaxt.
+Hibernate Search filter query builder for [JSON-QL](https://github.com/json-ql). To be used with Hibernate Search using ElasticSearch as a backend. Allows to apply filters with Hibernate Search using ElasticSearch JSON query syntaxt.
 
 ## How to use
 
@@ -154,6 +154,24 @@ To search only admins paginated:
     "condition": "eq",
     "value": true  
   } 
+}
+```
+
+The same as above, but skipping default score-based sorting with custom field sorting:
+
+```json
+{
+  "pageSize": 20,
+  "page": 1,
+  "query": "john",
+  "admin": {
+    "condition": "eq",
+    "value": true  
+  }, 
+  "sort": [{
+    "field": "username",
+    "direction": "ASC"        
+  }]
 }
 ```
 
