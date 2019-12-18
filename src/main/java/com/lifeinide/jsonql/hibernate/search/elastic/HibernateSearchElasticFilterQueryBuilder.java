@@ -73,7 +73,8 @@ import java.util.function.Function;
  * }</pre>
  *
  * Note, that in the example above we use {@code standard} analyzer from ElasticSearch, but there are of course other options.
- * Please see them <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-analyzers.html">here</a>.
+ * Please see them <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-analyzers.html">here</a>
+ * or see hints at the bottom of this comment.
  * </p>
  *
  * <p>
@@ -89,7 +90,8 @@ import java.util.function.Function;
  * Note, that in the example above we use {@code keyword} analyzer from ElasticSearch, which is almost perfect for searching by
  * text ids. However this analyzer has a one flaw, which is the lack of {@code lowercase} filter. If you want to apply such a filter,
  * you'd need to create your own custom keyword analyzer in ElasticSearch, as described
- * <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-keyword-analyzer.html">here</a>.
+ * <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-keyword-analyzer.html">here</a> .
+ * You can also see some hints at the bottom of this comment.
  * </p>
  *
  * <h3>Field bridge for {@link BigDecimal}</h3>
@@ -146,6 +148,37 @@ import java.util.function.Function;
  *     }
  *   }
  * }}</pre>
+ *
+ * <h2>Analyzer hints</h2>
+ *
+ * Here is the recommended set of analyzers to be used for English language analysis. For {@link HibernateSearch#FIELD_TEXT}:
+ *
+ * <pre>{@code
+ * @AnalyzerDef(name = "myEnglishAnalyzer",
+ * 	tokenizer = @TokenizerDef(factory = StandardTokenizerFactory.class),
+ * 	filters = {
+ *                @TokenFilterDef(factory = LowerCaseFilterFactory.class),
+ *        @TokenFilterDef(factory = StopFilterFactory.class, params = {
+ *            @Parameter(name = "stopwords", value = "_english_")
+ *        }),
+ *        @TokenFilterDef(factory = SnowballPorterFilterFactory.class, params = {
+ *            @Parameter(name = "language", value = "English")
+ *        })
+ *   },
+ *   charFilters = {
+ *        @CharFilterDef(factory = HTMLStripCharFilterFactory.class) // optional for HTML tags stripping
+ *   }
+ * )}</pre>
+ *
+ * And for {@link HibernateSearch#FIELD_ID}:
+ *
+ * <pre>{@code
+ * @AnalyzerDef(name = MySQLSearchConstants.ID_ANALYZER,
+ * 	tokenizer = @TokenizerDef(factory = KeywordTokenizerFactory.class),
+ * 	filters = {
+ *    @TokenFilterDef(factory = LowerCaseFilterFactory.class)
+ *  }
+ * )}</pre>
  *
  * @see HibernateSearchFilterQueryBuilder More information about Hibernate Search-related filtering.
  * @author Lukasz Frankowski
