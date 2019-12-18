@@ -157,9 +157,10 @@ import java.util.function.Function;
  * @AnalyzerDef(name = "myEnglishAnalyzer",
  * 	tokenizer = @TokenizerDef(factory = StandardTokenizerFactory.class),
  * 	filters = {
- *                @TokenFilterDef(factory = LowerCaseFilterFactory.class),
- *        @TokenFilterDef(factory = StopFilterFactory.class, params = {
- *            @Parameter(name = "stopwords", value = "_english_")
+ *        @TokenFilterDef(factory = LowerCaseFilterFactory.class),
+ *        @TokenFilterDef(name = "jfs_stopwords", factory = ElasticsearchTokenFilterFactory.class, params = {
+ *               @Parameter(name = "type", value = "stop"),
+ *               @Parameter(name = "stopwords", value "_english_")
  *        }),
  *        @TokenFilterDef(factory = SnowballPorterFilterFactory.class, params = {
  *            @Parameter(name = "language", value = "English")
