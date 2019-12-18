@@ -174,7 +174,7 @@ import java.util.function.Function;
  *
  * <pre>{@code
  * @AnalyzerDef(name = MySQLSearchConstants.ID_ANALYZER,
- * 	tokenizer = @TokenizerDef(factory = KeywordTokenizerFactory.class),
+ * 	tokenizer = @TokenizerDef(factory = WhitespaceTokenizerFactory.class),
  * 	filters = {
  *    @TokenFilterDef(factory = LowerCaseFilterFactory.class)
  *  }
