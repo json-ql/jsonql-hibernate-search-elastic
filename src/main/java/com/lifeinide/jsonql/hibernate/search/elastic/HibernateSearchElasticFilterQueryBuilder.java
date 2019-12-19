@@ -216,15 +216,20 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 		boolean fieldFound = false;
 		this.searchableFields = fields!=null ? fields : new HashMap<>();
 
-		if (fields!=null && q!=null)
-			for (Map.Entry<String, FieldSearchStrategy> entry: fields.entrySet()) {
+		if (fields!=null && q!=null) {
+			EQLBool bool = EQLBool.of();
+			for (Map.Entry<String, FieldSearchStrategy> entry : fields.entrySet()) {
 				try {
-					context.getEqlBool().withShould(createFieldQuery(entry.getValue(), entry.getKey(), q));
+					bool.withShould(createFieldQuery(entry.getValue(), entry.getKey(), q));
 					fieldFound = true;
 				} catch (Exception e) {
 					// silently, this means that some of our full text fields don't exists in the entity
 				}
 			}
+
+			if (fieldFound)
+				context.getEqlBool().withMust(EQLBoolComponent.of(bool));
+		}
 
 		if (!fieldFound)
 			throw new SearchException(String.format("No fulltext fields found for: %s", entityClass.getSimpleName()));

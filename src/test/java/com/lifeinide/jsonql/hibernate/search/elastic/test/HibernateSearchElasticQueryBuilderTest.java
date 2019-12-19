@@ -2,6 +2,7 @@ package com.lifeinide.jsonql.hibernate.search.elastic.test;
 
 import com.lifeinide.jsonql.core.dto.BasePageableRequest;
 import com.lifeinide.jsonql.core.dto.Page;
+import com.lifeinide.jsonql.core.filters.SingleValueQueryFilter;
 import com.lifeinide.jsonql.core.intr.Pageable;
 import com.lifeinide.jsonql.core.intr.Sortable;
 import com.lifeinide.jsonql.core.test.IJsonQLBaseTestEntity;
@@ -132,6 +133,21 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 				}
 				Assertions.assertEquals(it.getEntity().getId().toString(), it.getId());
 			});
+		});
+	}
+
+	/**
+	 * Tests if narrowing resultset with full text search works with filters.
+	 */
+	@Test
+	public void testFilteredFullTextResults() {
+		doWithEntityManager(em -> {
+			DefaultHibernateSearchElasticFilterQueryBuilder<HibernateSearchElasticEntity> qb =
+				new DefaultHibernateSearchElasticFilterQueryBuilder<>(em, HibernateSearchElasticEntity.class, phrase("a"));
+			Page<HibernateSearchElasticEntity> results = qb
+				.add("booleanVal", SingleValueQueryFilter.of(true))
+				.list(null);
+			Assertions.assertEquals(13, results.getCount());
 		});
 	}
 
