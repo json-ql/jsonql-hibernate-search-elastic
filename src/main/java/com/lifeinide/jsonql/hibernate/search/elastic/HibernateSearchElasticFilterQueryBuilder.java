@@ -28,6 +28,7 @@ import org.apache.lucene.document.FieldType;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
 import org.hibernate.search.SearchFactory;
+import org.hibernate.search.annotations.Analyze;
 import org.hibernate.search.bridge.FieldBridge;
 import org.hibernate.search.bridge.TwoWayFieldBridge;
 import org.hibernate.search.elasticsearch.impl.ElasticsearchJsonQueryDescriptor;
@@ -104,6 +105,21 @@ import java.util.stream.Stream;
  *
  * Use {@link BaseElasticDomainFieldBridge} in the same way as {@link BaseDomainFieldBridge} is used in
  * {@link HibernateSearchFilterQueryBuilder} example.
+ *
+ * <h3>How to make a field to be of the "keyword" type</h3>
+ *
+ * If you want to filter out your data by string or enum types (using {@link SingleValueQueryFilter} or {@link ListQueryFilter}), be aware
+ * that for default configuration they will be stored as "text" fields, what makes a problem of doing "term" queries agains them, what is
+ * a default type of query done with {@link SingleValueQueryFilter}. For more info please read <em>Why doesn’t the term query match my
+ * document?</em> chapter from
+ * <a href="https://www.elastic.co/guide/en/elasticsearch/reference/5.6/query-dsl-term-query.html">here</a>.
+ *
+ * To make the field to be stored as the "keyword" type, which is appropriate for "term" queries, just create the field with
+ * {@link Analyze#NO} analyzer setup:
+ *
+ * <pre>{@code
+ * @Field(analyze = Analyze.NO)
+ * protected MyEnum myEnum = MyEnum.VALUE1;}</pre>
  *
  * <h2>Highlighting support</h2>
  *
