@@ -53,6 +53,7 @@ import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -458,8 +459,16 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 		return entityInfoCache.computeIfAbsent(entityClass, it -> {
 			EntityType entityType = context.getHibernateSearch().entityManager().getMetamodel().entity(entityClass);
 			String idName = entityType.getId(entityType.getIdType().getJavaType()).getName();
+
+			// find all subclasses for requested entity
+			List<Class> allClasses = new ArrayList<>();
+			for (Class c: context.getHibernateSearch().fullTextEntityManager().getSearchFactory().getIndexedTypes())
+				if (entityClass.isAssignableFrom(c))
+					allClasses.add(c);
+
 			FieldBridge fieldBridge = context.getHibernateSearch().fullTextEntityManager().getSearchFactory()
-				.getIndexedTypeDescriptor(entityClass).getIndexedField(idName).getFieldBridge();
+				.getIndexedTypeDescriptor(allClasses.iterator().next()).getIndexedField(idName).getFieldBridge();
+
 			if (fieldBridge instanceof TwoWayFieldBridge) {
 				FieldType fieldType = new FieldType();
 				fieldType.setStored(true);
@@ -467,11 +476,11 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 					Document document = new Document();
 					document.add(new Field(idName, id, fieldType));
 					return ((TwoWayFieldBridge) fieldBridge).get(idName, document);
-				});
+				}, allClasses);
 			} else {
 				logger.warn("Cannot convert id for entity: {} and field bridge: {}. The entity won't be fetched from db.",
 					entityClass.getSimpleName(), fieldBridge);
-				return new SearchableEntityInfo(entityType, idName, null);
+				return new SearchableEntityInfo(entityType, idName, null, allClasses);
 			}
 		});
 	}
@@ -521,8 +530,24 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 		// get the highlighted results
 		try {
-			// make request (to concrete entity index or _all index)
-			String indexName = global ? "_all" : context.getIndexedTypeDescriptor().getIndexDescriptors().iterator().next().getName();
+			String indexName = "_all";
+			if (!global) {
+				SearchableEntityInfo mainEntityInfo = loadEntityInfo(context.getEntityClass());
+				indexName = String.join(",", mainEntityInfo.allClasses.stream()
+					.map(clazz -> context.getHibernateSearch().fullTextEntityManager().getSearchFactory()
+						.getIndexedTypeDescriptor(clazz).getIndexDescriptors().iterator().next().getName())
+					.collect(Collectors.toSet()));
+				// add type filter
+				if (mainEntityInfo.allClasses.size()==1)
+					context.getEqlFilterBool().withMust(EQLTypeComponent.of(mainEntityInfo.allClasses.iterator().next()));
+				else {
+					EQLBool typeFilterBool = EQLBool.of();
+					for (Class c: mainEntityInfo.allClasses)
+						typeFilterBool.withShould(EQLTypeComponent.of(c));
+					context.getEqlFilterBool().withMust(EQLBoolComponent.of(typeFilterBool));
+				}
+			}
+
 			String query = EQL_BUILDER.toJsonString(context.getEqlRoot());
 			if (logger().isTraceEnabled())
 				logger().trace("Executing full text query: {}", query);
@@ -613,11 +638,14 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 		@Nonnull protected EntityType entityType;
 		@Nonnull protected String idName;
 		@Nullable protected Function<String, Object> idConverter;
+		@Nonnull protected List<Class> allClasses;
 
-		public SearchableEntityInfo(@Nonnull EntityType entityType, @Nonnull String idName, @Nullable Function<String, Object> idConverter) {
+		public SearchableEntityInfo(@Nonnull EntityType entityType, @Nonnull String idName, @Nullable Function<String, Object> idConverter,
+									@Nonnull List<Class> allClasses) {
 			this.entityType = entityType;
 			this.idName = idName;
 			this.idConverter = idConverter;
+			this.allClasses = allClasses;
 		}
 
 		@Override
