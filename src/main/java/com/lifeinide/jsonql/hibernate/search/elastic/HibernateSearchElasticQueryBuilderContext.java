@@ -8,6 +8,7 @@ import com.lifeinide.jsonql.hibernate.search.HibernateSearch;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Stack;
 
 /**
  * @author Lukasz Frankowski
@@ -21,7 +22,7 @@ public class HibernateSearchElasticQueryBuilderContext<E> extends BaseHibernateS
 	protected EQLBool eqlBool;
 
 	/** Filter query bool. We always use query with {@code {filter: [{bool: {...}}]}}. **/
-	protected EQLBool eqlFilterBool;
+	protected Stack<EQLBool> eqlFilterBool = new Stack<>();
 
 	public HibernateSearchElasticQueryBuilderContext(@Nullable String query, @Nonnull Class<E> entityClass,
 													 @Nonnull HibernateSearch hibernateSearch) {
@@ -40,11 +41,18 @@ public class HibernateSearchElasticQueryBuilderContext<E> extends BaseHibernateS
 	}
 
 	@Nonnull public EQLBool getEqlFilterBool() {
-		if (eqlFilterBool==null) {
-			eqlFilterBool = EQLBool.of();
-			eqlBool.withFilter(EQLBoolComponent.of(eqlFilterBool));
+		if (eqlFilterBool.isEmpty()) {
+			eqlFilterBool.push(EQLBool.of());
+			eqlBool.withFilter(EQLBoolComponent.of(eqlFilterBool.peek()));
 		}
 
-		return eqlFilterBool;
+		return eqlFilterBool.peek();
 	}
+
+	public EQLBool doWithNewFilterBool(Runnable r) {
+		this.eqlFilterBool.push(EQLBool.of());
+		r.run();
+		return this.eqlFilterBool.pop();
+	}
+
 }

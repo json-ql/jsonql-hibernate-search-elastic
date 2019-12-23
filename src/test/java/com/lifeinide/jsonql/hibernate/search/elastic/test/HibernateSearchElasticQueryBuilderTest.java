@@ -151,6 +151,25 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 		});
 	}
 
+	@Test
+	public void testAndOrConditions() {
+		doTest((em, qb) -> {
+			qb.and(() -> {
+				qb.add("booleanVal", SingleValueQueryFilter.of(true));
+				qb.add("booleanVal", SingleValueQueryFilter.of(false));
+			});
+			Assertions.assertEquals(0, qb.list().getCount());
+		});
+
+		doTest((em, qb) -> {
+			qb.or(() -> {
+				qb.add("booleanVal", SingleValueQueryFilter.of(true));
+				qb.add("booleanVal", SingleValueQueryFilter.of(false));
+			});
+			Assertions.assertEquals(100, qb.list().getCount());
+		});
+	}
+
 	protected void doWithEntityManager(Consumer<EntityManager> c) {
 		EntityManager entityManager = entityManagerFactory.createEntityManager();
 		entityManager.getTransaction().begin();

@@ -52,6 +52,7 @@ import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * Implementation of {@link FilterQueryBuilder} for Hibernate Search using ElasticSearch service.
@@ -390,6 +391,27 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 	@Override
 	public P list(Pageable pageable, Sortable<?> sortable) {
 		return (P) execute(pageable, sortable, defaultSortCustomizer(sortable), null);
+	}
+
+	@Nonnull
+	@Override
+	public HibernateSearchElasticFilterQueryBuilder<E, H, P, PH> or(@Nonnull Runnable r) {
+		EQLBool result = context.doWithNewFilterBool(r);
+		EQLBool orBool = EQLBool.of();
+		Stream
+			.concat(result.getMust().stream(), result.getShould().stream())
+			.forEach(orBool::withShould);
+		result.getMustNot()
+			.forEach(orBool::withMustNot);
+		context.getEqlFilterBool().withMust(EQLBoolComponent.of(orBool));
+		return this;
+	}
+
+	@Nonnull
+	@Override
+	public HibernateSearchElasticFilterQueryBuilder<E, H, P, PH> and(@Nonnull Runnable r) {
+		context.getEqlFilterBool().withMust(EQLBoolComponent.of(context.doWithNewFilterBool(r)));
+		return this;
 	}
 
 	/**********************************************************************************************************
