@@ -397,20 +397,24 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 	@Override
 	public HibernateSearchElasticFilterQueryBuilder<E, H, P, PH> or(@Nonnull Runnable r) {
 		EQLBool result = context.doWithNewFilterBool(r);
-		EQLBool orBool = EQLBool.of();
-		Stream
-			.concat(result.getMust().stream(), result.getShould().stream())
-			.forEach(orBool::withShould);
-		result.getMustNot()
-			.forEach(orBool::withMustNot);
-		context.getEqlFilterBool().withMust(EQLBoolComponent.of(orBool));
+		if (!result.isEmpty()) {
+			EQLBool orBool = EQLBool.of();
+			Stream
+				.concat(result.getMust().stream(), result.getShould().stream())
+				.forEach(orBool::withShould);
+			result.getMustNot()
+				.forEach(orBool::withMustNot);
+			context.getEqlFilterBool().withMust(EQLBoolComponent.of(orBool));
+		}
 		return this;
 	}
 
 	@Nonnull
 	@Override
 	public HibernateSearchElasticFilterQueryBuilder<E, H, P, PH> and(@Nonnull Runnable r) {
-		context.getEqlFilterBool().withMust(EQLBoolComponent.of(context.doWithNewFilterBool(r)));
+		EQLBool results = context.doWithNewFilterBool(r);
+		if (!results.isEmpty())
+			context.getEqlFilterBool().withMust(EQLBoolComponent.of(results));
 		return this;
 	}
 
