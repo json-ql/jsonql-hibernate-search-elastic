@@ -503,11 +503,14 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 		try {
 			// make request (to concrete entity index or _all index)
 			String indexName = global ? "_all" : context.getIndexedTypeDescriptor().getIndexDescriptors().iterator().next().getName();
+			String query = EQL_BUILDER.toJsonString(context.getEqlRoot());
+			if (logger().isTraceEnabled())
+				logger().trace("Executing full text query: {}", query);
 			Response httpResponse = restClient.performRequest(
 				"POST",
 				String.format("/%s/_search", indexName),
 				new HashMap<>(),
-				new NStringEntity(EQL_BUILDER.toJsonString(context.getEqlRoot()), ContentType.APPLICATION_JSON)
+				new NStringEntity(query, ContentType.APPLICATION_JSON)
 			);
 			JsonObject jsonResponse = EQL_BUILDER
 				.getGson()
