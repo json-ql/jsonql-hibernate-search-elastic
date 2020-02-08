@@ -1,6 +1,7 @@
 package com.lifeinide.jsonql.hibernate.search.elastic.test;
 
 import com.lifeinide.jsonql.core.test.IJsonQLTestEntity;
+import com.lifeinide.jsonql.core.test.IJsonQLTestParentEntity;
 import com.lifeinide.jsonql.core.test.JsonQLTestEntityEnum;
 import com.lifeinide.jsonql.hibernate.search.HibernateSearch;
 import com.lifeinide.jsonql.hibernate.search.elastic.bridge.ElasticBigDecimalRangeBridge;
@@ -54,7 +55,7 @@ import java.time.LocalDate;
  */
 @Entity
 @Indexed(index = "hibernatesearchelasticentity")
-public class HibernateSearchElasticEntity implements IJsonQLTestEntity<Long, HibernateSearchElasticAssociatedEntity> {
+public class HibernateSearchElasticEntity implements IJsonQLTestEntity<Long>, IJsonQLTestParentEntity<Long, HibernateSearchElasticAssociatedEntity> {
 
 	@Id private Long id;
 

@@ -32,7 +32,6 @@ import java.util.function.Consumer;
 public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuilderTest<
 	EntityManager,
 	Long,
-	HibernateSearchElasticAssociatedEntity,
 	HibernateSearchElasticEntity,
 	HibernateSearchElasticFilterQueryBuilder<
 		HibernateSearchElasticEntity,
@@ -61,6 +60,7 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 			entityManagerFactory.close();
 	}
 
+	@Nonnull
 	@Override
 	protected HibernateSearchElasticEntity buildEntity(Long previousId) {
 		return new HibernateSearchElasticEntity(previousId==null ? 1L : previousId+1);
