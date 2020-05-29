@@ -518,9 +518,9 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 		// add paging manually, because in execute() we put it on FullTextQuery (because HS cuts it off from the original query)
 		if (pageable.isPaged())
-			context.getEqlRoot().withPage(pageable.getOffset(), pageable.getPageSize());
+			context.getEqlRoot().withPage(pageable.getOffset(), getPageSize(pageable));
 		else
-			context.getEqlRoot().withPage(0, MAX_HIGHLIGHT_RESULT_WINDOW_SIZE);
+			context.getEqlRoot().withPage(0, maxResults!=null ? maxResults : MAX_HIGHLIGHT_RESULT_WINDOW_SIZE);
 
 		// extract ES low-level client
 		SearchFactory searchFactory = context.getHibernateSearch().fullTextEntityManager().getSearchFactory();
@@ -606,7 +606,7 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 					}
 				}));
 
-			return (PH) buildPageableResult(pageable.getPageSize(), pageable.getPage(), total, resultList);
+			return (PH) buildPageableResult(getPageSize(pageable), pageable.getPage(), total, resultList);
 		} catch (RuntimeException e) {
 			throw e;
 		} catch (Exception e) {
