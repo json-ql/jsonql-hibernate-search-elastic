@@ -84,4 +84,8 @@ dependencies {
     testRuntimeOnly group: 'ch.qos.logback', name: 'logback-classic', version: property('vLogback')
 }
 
+test {
+    useJUnitPlatform()
+}
+
 def installer = install.repositories.mavenInstaller
