@@ -80,11 +80,11 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 
 		// test for standard list()
 		doWithEntityManager(em -> c.accept(em,
-			new HibernateSearchElasticFilterQueryBuilder<>(em, HibernateSearchElasticEntity.class, SEARCHABLE_STRING)));
+			new HibernateSearchElasticFilterQueryBuilder<>(em, HibernateSearchElasticEntity.class, SEARCHABLE_STRING).withUnlimitedResults()));
 
 		// test for highlight()
 		doWithEntityManager(em -> c.accept(em,
-			new HighlightingHibernateSearchElasticFilterQueryBuilder<HibernateSearchElasticEntity>(em, HibernateSearchElasticEntity.class, SEARCHABLE_STRING)));
+			new HighlightingHibernateSearchElasticFilterQueryBuilder<HibernateSearchElasticEntity>(em, HibernateSearchElasticEntity.class, SEARCHABLE_STRING).withUnlimitedResults()));
 	}
 
 	@Test
