@@ -80,11 +80,11 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 
 		// test for standard list()
 		doWithEntityManager(em -> c.accept(em,
-			new HibernateSearchElasticFilterQueryBuilder<>(em, HibernateSearchElasticEntity.class, SEARCHABLE_STRING)));
+			new HibernateSearchElasticFilterQueryBuilder<>(em, HibernateSearchElasticEntity.class, SEARCHABLE_STRING).withUnlimitedResults()));
 
 		// test for highlight()
 		doWithEntityManager(em -> c.accept(em,
-			new HighlightingHibernateSearchElasticFilterQueryBuilder<HibernateSearchElasticEntity>(em, HibernateSearchElasticEntity.class, SEARCHABLE_STRING)));
+			new HighlightingHibernateSearchElasticFilterQueryBuilder<HibernateSearchElasticEntity>(em, HibernateSearchElasticEntity.class, SEARCHABLE_STRING).withUnlimitedResults()));
 	}
 
 	@Test
@@ -96,6 +96,28 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 			Assertions.assertEquals(100, page.getCount());
 
 			qb = new DefaultHibernateSearchElasticFilterQueryBuilder<>(em, SEARCHABLE_STRING_PART);
+			page = qb.list();
+			Assertions.assertEquals(101, page.getCount());
+		});
+	}
+
+	@Test
+	public void testNullQuery() {
+		doWithEntityManager(em -> {
+			DefaultHibernateSearchElasticFilterQueryBuilder<?> qb =
+					new DefaultHibernateSearchElasticFilterQueryBuilder<>(em, HibernateSearchElasticEntity.class, null);
+			Page<?> page = qb.list();
+			Assertions.assertEquals(100, page.getCount());
+
+			qb = new DefaultHibernateSearchElasticFilterQueryBuilder<>(em, null);
+			page = qb.add("booleanVal", SingleValueQueryFilter.of(true)).list();
+			Assertions.assertEquals(50, page.getCount());
+
+			qb = new DefaultHibernateSearchElasticFilterQueryBuilder<>(em, null);
+			page = qb.add("stringVal", SingleValueQueryFilter.of("phrase-aa")).list();
+			Assertions.assertEquals(1, page.getCount());
+
+			qb = new DefaultHibernateSearchElasticFilterQueryBuilder<>(em, null);
 			page = qb.list();
 			Assertions.assertEquals(101, page.getCount());
 		});

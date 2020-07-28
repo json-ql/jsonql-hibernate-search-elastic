@@ -249,7 +249,7 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 				context.getEqlBool().withMust(EQLBoolComponent.of(bool));
 		}
 
-		if (!fieldFound)
+		if (!fieldFound && q!=null)
 			throw new SearchException(String.format("No fulltext fields found for: %s", entityClass.getSimpleName()));
 	}
 
