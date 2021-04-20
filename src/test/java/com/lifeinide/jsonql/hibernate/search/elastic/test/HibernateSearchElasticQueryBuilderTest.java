@@ -192,6 +192,18 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 		});
 	}
 
+	@Test
+	public void testMatchAllQuery() {
+		doWithEntityManager(em -> {
+			Page<ElasticSearchHighlightedResults<HibernateSearchElasticEntity>> results =
+				new HibernateSearchElasticFilterQueryBuilder<>(em, HibernateSearchElasticEntity.class, "*")
+					.withUnlimitedResults()
+					.highlight();
+			Assertions.assertEquals(100, results.getCount()); // all results should be returned
+			results.getData().forEach(it -> Assertions.assertTrue(it.getHighlight().contains(SEARCHABLE_STRING))); // test manual hightlight
+		});
+	}
+
 	protected void doWithEntityManager(Consumer<EntityManager> c) {
 		EntityManager entityManager = entityManagerFactory.createEntityManager();
 		entityManager.getTransaction().begin();

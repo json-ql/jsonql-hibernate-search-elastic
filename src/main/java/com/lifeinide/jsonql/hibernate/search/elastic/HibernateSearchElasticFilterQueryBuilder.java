@@ -1,6 +1,9 @@
 package com.lifeinide.jsonql.hibernate.search.elastic;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.lifeinide.jsonql.core.dto.BasePageableRequest;
 import com.lifeinide.jsonql.core.dto.Page;
 import com.lifeinide.jsonql.core.enums.QueryConjunction;
@@ -208,10 +211,12 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 	public static final Logger logger = LoggerFactory.getLogger(HibernateSearchElasticFilterQueryBuilder.class);
 	public static final EQLBuilder EQL_BUILDER = new EQLBuilder(false);
 	public static final Class GLOBAL_SEARCH_CLASS = Object.class;
+	public static final int MAX_HIGHLIGHT_LENGTH = 100;
 
 	protected HibernateSearchElasticQueryBuilderContext<E> context;
 	protected Map<String, FieldSearchStrategy> searchableFields;
 	protected boolean global = false; // indicates global search instead of concrete entity type search
+	protected int maxHighlightLength = MAX_HIGHLIGHT_LENGTH;
 
 	/**
 	 * Builds a query builder for concrete entity class with default search fields.
@@ -233,6 +238,12 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 		boolean fieldFound = false;
 		this.searchableFields = fields!=null ? fields : new HashMap<>();
+
+		if ("*".equals(q)) {
+			context.getEqlBool().withMust(EQLMatchAllComponent.of());
+			return;
+		}
+
 
 		if (fields!=null && q!=null) {
 			EQLBool bool = EQLBool.of();
@@ -569,6 +580,8 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 			hits.getAsJsonArray("hits").forEach(it -> {
 				JsonObject el = (JsonObject) it;
 				List<String> highlightList = new ArrayList<>();
+				if (el.getAsJsonObject("highlight")!=null) {
+
 				el.getAsJsonObject("highlight").entrySet().forEach(entry ->
 					entry.getValue().getAsJsonArray().forEach(it1 -> highlightList.add(it1.getAsString())));
 
@@ -586,6 +599,44 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 				if (entityInfo.idConverter!=null)
 					idMap.computeIfAbsent(entityInfo, it1 -> new LinkedHashMap<>())
 						.put(entityInfo.idConverter.apply(result.getId()), result);
+
+				} else {
+
+					// in case of match_all query we have no highlights, let's build them manually
+					StringBuilder highlight = new StringBuilder();
+
+					JsonObject source = el.getAsJsonObject("_source");
+					if (source != null) {
+
+						searchableFields.forEach((field, strategy) -> {
+							try {
+								JsonElement element = source.get(field);
+								if (element instanceof JsonArray) {
+									element.getAsJsonArray().forEach(value -> {
+										if (highlight.length() > 0)
+											highlight.append(" ");
+										highlight.append(value.getAsString());
+									});
+								} else if (element instanceof JsonPrimitive) {
+									highlight.append(element.getAsString());
+								}
+							} catch (Exception e) {
+								// silently, no value? no json array value type?
+							}
+						});
+
+					}
+
+					H result = buildHighlight(
+						el.get("_id").getAsString(),
+						el.get("_type").getAsString(),
+						el.get("_score").isJsonNull() ? 0 : el.get("_score").getAsDouble(),
+						highlight.substring(0, Math.min(maxHighlightLength, highlight.length()))
+					);
+
+					resultList.add(result);
+
+				}
 			});
 
 			// having idMap filled we can now fetch real entities from the db and set them for the results list
@@ -632,6 +683,14 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 	/** @see #highlight(Pageable, Sortable)  **/
 	@Nonnull public PH highlight(@Nullable PageableSortable<?> ps) {
 		return highlight(ps, ps);
+	}
+
+	public int getMaxHighlightLength() {
+		return maxHighlightLength;
+	}
+
+	public void setMaxHighlightLength(int maxHighlightLength) {
+		this.maxHighlightLength = maxHighlightLength;
 	}
 
 	protected static class SearchableEntityInfo {
@@ -709,8 +768,8 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 	public static Map<String, FieldSearchStrategy> defaultSearchFields() {
 		Map<String, FieldSearchStrategy> map = new LinkedHashMap<>();
-		map.put(HibernateSearch.FIELD_TEXT, FieldSearchStrategy.DEFAULT);
 		map.put(HibernateSearch.FIELD_ID, FieldSearchStrategy.WILDCARD_PHRASE);
+		map.put(HibernateSearch.FIELD_TEXT, FieldSearchStrategy.DEFAULT);
 		return map;
 	}
 
