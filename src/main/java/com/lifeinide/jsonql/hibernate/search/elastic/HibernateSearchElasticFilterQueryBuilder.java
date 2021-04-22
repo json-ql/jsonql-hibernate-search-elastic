@@ -594,12 +594,6 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 
 				resultList.add(result);
 
-				// separate fetched entities by type and get its real converted id
-				SearchableEntityInfo entityInfo = loadEntityInfo(result.getType());
-				if (entityInfo.idConverter!=null)
-					idMap.computeIfAbsent(entityInfo, it1 -> new LinkedHashMap<>())
-						.put(entityInfo.idConverter.apply(result.getId()), result);
-
 				} else {
 
 					// in case of match_all query we have no highlights, let's build them manually
@@ -637,6 +631,14 @@ extends BaseHibernateSearchFilterQueryBuilder<E, P, HibernateSearchElasticQueryB
 					resultList.add(result);
 
 				}
+			});
+
+			// separate fetched entities by type and get its real converted id
+			resultList.forEach(result -> {
+				SearchableEntityInfo entityInfo = loadEntityInfo(result.getType());
+				if (entityInfo.idConverter!=null)
+					idMap.computeIfAbsent(entityInfo, it1 -> new LinkedHashMap<>())
+						.put(entityInfo.idConverter.apply(result.getId()), result);
 			});
 
 			// having idMap filled we can now fetch real entities from the db and set them for the results list

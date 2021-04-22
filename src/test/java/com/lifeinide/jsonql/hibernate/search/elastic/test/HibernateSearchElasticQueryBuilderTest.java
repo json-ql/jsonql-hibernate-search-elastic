@@ -200,7 +200,10 @@ public class HibernateSearchElasticQueryBuilderTest extends JsonQLBaseQueryBuild
 					.withUnlimitedResults()
 					.highlight();
 			Assertions.assertEquals(100, results.getCount()); // all results should be returned
-			results.getData().forEach(it -> Assertions.assertTrue(it.getHighlight().contains(SEARCHABLE_STRING))); // test manual hightlight
+			results.getData().forEach(it -> {
+				Assertions.assertTrue(it.getHighlight().contains(SEARCHABLE_STRING));
+				Assertions.assertNotNull(it.getEntity());
+			}); // test manual highlight
 		});
 	}
 
